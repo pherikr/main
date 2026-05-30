@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Penalty Shot</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #000; overflow: hidden; touch-action: none; }
+  canvas { display: block; }
+  #ui {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none; display: flex; flex-direction: column;
+    align-items: center; justify-content: flex-end; padding-bottom: 20px;
+  }
+  #instruction {
+    position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+    color: #fff; font-family: 'Arial', sans-serif; font-size: 18px;
+    font-weight: bold; text-shadow: 2px 2px 4px #000;
+    background: rgba(0,0,0,0.5); padding: 8px 16px; border-radius: 20px;
+    text-align: center; pointer-events: none;
+  }
+  #power-container {
+    display: none; flex-direction: column; align-items: center; gap: 8px;
+    position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%);
+  }
+  #power-label { color: #fff; font-family: Arial; font-size: 16px; font-weight: bold; text-shadow: 1px 1px 3px #000; }
+  #power-bar-bg {
+    width: 200px; height: 28px; background: rgba(0,0,0,0.6);
+    border: 2px solid #fff; border-radius: 14px; overflow: hidden;
+  }
+  #power-bar {
+    height: 100%; width: 0%; border-radius: 12px;
+    background: linear-gradient(90deg, #00cc44, #ffcc00, #ff4400);
+    transition: none;
+  }
+  #power-pct { color: #fff; font-family: Arial; font-size: 14px; text-shadow: 1px 1px 3px #000; }
+  #hold-btn {
+    display: none; pointer-events: auto; cursor: pointer;
+    background: linear-gradient(135deg, #1a6ed8, #0d4aab);
+    color: #fff; font-family: Arial; font-size: 20px; font-weight: bold;
+    border: 3px solid #fff; border-radius: 50px; padding: 16px 40px;
+    text-shadow: 1px 1px 3px #000; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+    user-select: none; -webkit-user-select: none;
+  }
+  #spin-container {
+    display: none; flex-direction: column; align-items: center; gap: 10px;
+    position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+  }
+  #spin-label { color: #fff; font-family: Arial; font-size: 14px; font-weight: bold; text-shadow: 1px 1px 3px #000; }
+  #spin-canvas { border: 3px solid rgba(255,255,255,0.8); border-radius: 50%; cursor: crosshair; pointer-events: auto; }
+  #shoot-btn {
+    pointer-events: auto; cursor: pointer;
+    background: linear-gradient(135deg, #cc1111, #881111);
+    color: #fff; font-family: Arial; font-size: 22px; font-weight: bold;
+    border: 3px solid #fff; border-radius: 50px; padding: 14px 50px;
+    text-shadow: 1px 1px 3px #000; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    user-select: none; -webkit-user-select: none;
+  }
+  #result-overlay {
+    display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    align-items: center; justify-content: center; flex-direction: column;
+    background: rgba(0,0,0,0.5); pointer-events: auto; cursor: pointer;
+  }
+  #result-text {
+    font-family: 'Arial Black', Arial; font-size: 72px; font-weight: 900;
+    text-shadow: 4px 4px 0 #000, -2px -2px 0 #000;
+    animation: pulse 0.5s ease-in-out infinite alternate;
+  }
+  #result-sub {
+    font-family: Arial; font-size: 22px; color: #fff;
+    text-shadow: 2px 2px 4px #000; margin-top: 10px;
+  }
+  @keyframes pulse {
+    from { transform: scale(1); }
+    to { transform: scale(1.08); }
+  }
+</style>
+</head>
+<body>
+<canvas id="main"></canvas>
+<div id="ui">
+  <div id="instruction">Drag from ball toward goal to aim</div>
+</div>
+<div id="power-container">
+  <div id="power-label">POWER</div>
+  <div id="power-bar-bg"><div id="power-bar"></div></div>
+  <div id="power-pct">0%</div>
+</div>
+<button id="hold-btn">HOLD FOR POWER</button>
+<div id="spin-container">
+  <div id="spin-label">TAP BALL FOR SPIN</div>
+  <canvas id="spin-canvas" width="110" height="110"></canvas>
+  <button id="shoot-btn">SHOOT</button>
+</div>
+<div id="result-overlay">
+  <div id="result-text"></div>
+  <div id="result-sub">Tap to play again</div>
+</div>
+
+<script>
+const canvas = document.getElementById('main');
+const ctx = canvas.getContext('2d');
+const spinCanvas = document.getElementById('spin-canvas');
+const spinCtx = spinCanvas.getContext('2d');
+
+let W, H;
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', () => { resize(); draw(); });
+
+// ── Scene constants (recomputed on resize via getScene) ──
+function getScene() {
+  const VP = { x: W * 0.5, y: H * 0.38 }; // vanishing point
+  const BALL_X = W * 0.5;
+  const BALL_Y = H * 0.82;
+  const BALL_R = Math.min(W, H) * 0.028;
+
+  // Goal in perspective
+  const goalW = W * 0.36;
+  const goalH = H * 0.16;
+  const goalLeft  = VP.x - goalW / 2;
+  const goalRight = VP.x + goalW / 2;
+  const goalTop   = VP.y - goalH;
+  const goalBot   = VP.y;
+
+  return { VP, BALL_X, BALL_Y, BALL_R, goalW, goalH, goalLeft, goalRight, goalTop, goalBot };
+}
+
+// ── Game state ──
+let phase = 'aim'; // aim | power | spin | flight | result
+let aimLine = null;   // { x1,y1,x2,y2 } in screen coords
+let aimTarget = null; // { gx, gy } normalised goal coords (-1..1 horiz, 0..1 vert bottom=0)
+let power = 0;
+let powerInterval = null;
+let powerDir = 1;
+let spinX = 0.5, spinY = 0.5; // 0..1 on spin circle
+let spinChosen = false;
+
+// Flight
+let ballPos = { x: 0, y: 0 };
+let ballVel = { x: 0, y: 0, z: 0 };
+let ballSpin = { wx: 0, wy: 0, wz: 0 };
+let flightT = 0;
+let keeperDiveDir = 0; // -1 left, 0, 1 right
+let keeperDiveT = 0;
+let goalDecision = null; // 'goal' | 'saved' | 'miss'
+let ballTrail = [];
+let isDragging = false;
+let dragStart = null;
+let animFrame = null;
+
+// ── Draw functions ──
+function drawSky() {
+  const grad = ctx.createLinearGradient(0, 0, 0, H * 0.55);
+  grad.addColorStop(0, '#0a0a1e');
+  grad.addColorStop(0.5, '#1a1a4e');
+  grad.addColorStop(1, '#2d5a8e');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H * 0.55);
+  // stars
+  ctx.fillStyle = 'rgba(255,255,255,0.6)';
+  const stars = [[0.1,0.05],[0.2,0.12],[0.35,0.03],[0.5,0.08],[0.65,0.02],[0.78,0.1],[0.88,0.06],[0.15,0.18],[0.45,0.15],[0.72,0.19],[0.92,0.14]];
+  for (const [sx,sy] of stars) {
+    ctx.beginPath(); ctx.arc(sx*W, sy*H, 1.5, 0, Math.PI*2); ctx.fill();
+  }
+}
+
+function drawPitch() {
+  const sc = getScene();
+  const VP = sc.VP;
+  // pitch gradient
+  const grad = ctx.createLinearGradient(0, H * 0.55, 0, H);
+  grad.addColorStop(0, '#1a5c1a');
+  grad.addColorStop(0.5, '#1e6b1e');
+  grad.addColorStop(1, '#14491e');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, H * 0.54, W, H);
+
+  // perspective lines from ball toward vanishing point
+  ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+  ctx.lineWidth = 1;
+  const numLines = 8;
+  for (let i = 0; i <= numLines; i++) {
+    const bx = (i / numLines) * W;
+    ctx.beginPath(); ctx.moveTo(bx, H); ctx.lineTo(VP.x, VP.y); ctx.stroke();
+  }
+
+  // pitch stripes
+  for (let s = 0; s < 6; s++) {
+    const t1 = s / 6, t2 = (s + 1) / 6;
+    const y1 = VP.y + (H - VP.y) * t1;
+    const y2 = VP.y + (H - VP.y) * t2;
+    if (s % 2 === 0) {
+      ctx.fillStyle = 'rgba(0,0,0,0.06)';
+      ctx.fillRect(0, y1, W, y2 - y1);
+    }
+  }
+
+  // centre mark / penalty spot
+  ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(W*0.5, H*0.8, 5, 0, Math.PI*2); ctx.stroke();
+}
+
+function drawGoal() {
+  const sc = getScene();
+  const { goalLeft, goalRight, goalTop, goalBot, VP } = sc;
+
+  // Net shading
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.beginPath();
+  ctx.moveTo(goalLeft, goalTop);
+  ctx.lineTo(goalRight, goalTop);
+  ctx.lineTo(goalRight, goalBot);
+  ctx.lineTo(goalLeft, goalBot);
+  ctx.closePath();
+  ctx.fill();
+
+  // Net grid
+  ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+  ctx.lineWidth = 0.8;
+  const cols = 8, rows = 5;
+  for (let c = 0; c <= cols; c++) {
+    const gx = goalLeft + (goalRight - goalLeft) * (c / cols);
+    ctx.beginPath(); ctx.moveTo(gx, goalTop); ctx.lineTo(gx, goalBot); ctx.stroke();
+  }
+  for (let r = 0; r <= rows; r++) {
+    const gy = goalTop + (goalBot - goalTop) * (r / rows);
+    ctx.beginPath(); ctx.moveTo(goalLeft, gy); ctx.lineTo(goalRight, gy); ctx.stroke();
+  }
+
+  // Posts
+  const postW = 6;
+  ctx.fillStyle = '#ffffff';
+  ctx.shadowColor = 'rgba(255,255,255,0.5)';
+  ctx.shadowBlur = 8;
+  // Left post
+  ctx.fillRect(goalLeft - postW/2, goalTop, postW, goalBot - goalTop);
+  // Right post
+  ctx.fillRect(goalRight - postW/2, goalTop, postW, goalBot - goalTop);
+  // Crossbar
+  ctx.fillRect(goalLeft - postW/2, goalTop - postW/2, goalRight - goalLeft + postW, postW);
+  ctx.shadowBlur = 0;
+}
+
+function drawKeeper(diveT, diveDir) {
+  const sc = getScene();
+  const { goalLeft, goalRight, goalTop, goalBot } = sc;
+  const cx = (goalLeft + goalRight) / 2;
+  const cy = goalBot;
+  const scale = (goalBot - goalTop) * 0.75;
+
+  ctx.save();
+  ctx.translate(cx, cy);
+
+  // Dive animation
+  if (diveT > 0) {
+    const maxDive = (goalRight - goalLeft) * 0.42;
+    const diveX = diveDir * maxDive * Math.min(diveT * 1.8, 1);
+    const diveAngle = diveDir * Math.PI * 0.38 * Math.min(diveT * 2, 1);
+    const floatY = -scale * 0.25 * Math.sin(Math.min(diveT * 2, 1) * Math.PI);
+    ctx.translate(diveX, floatY);
+    ctx.rotate(diveAngle);
+  }
+
+  const s = scale * 0.012; // unit scale
+
+  // Legs
+  ctx.strokeStyle = '#1a3a8c';
+  ctx.lineWidth = scale * 0.1;
+  ctx.lineCap = 'round';
+  if (diveT > 0) {
+    // Extended legs during dive
+    ctx.beginPath(); ctx.moveTo(0, scale*0.1); ctx.lineTo(scale*0.25, scale*0.55); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, scale*0.1); ctx.lineTo(-scale*0.25, scale*0.55); ctx.stroke();
+  } else {
+    ctx.beginPath(); ctx.moveTo(scale*0.08, scale*0.08); ctx.lineTo(scale*0.1, scale*0.55); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-scale*0.08, scale*0.08); ctx.lineTo(-scale*0.1, scale*0.55); ctx.stroke();
+  }
+
+  // Torso
+  ctx.fillStyle = '#e8a020';
+  ctx.beginPath();
+  ctx.roundRect(-scale*0.14, -scale*0.55, scale*0.28, scale*0.45, scale*0.04);
+  ctx.fill();
+
+  // Arms
+  ctx.strokeStyle = '#e8a020';
+  ctx.lineWidth = scale * 0.09;
+  if (diveT > 0) {
+    const ext = Math.min(diveT * 2.5, 1);
+    ctx.beginPath(); ctx.moveTo(scale*0.14, -scale*0.45); ctx.lineTo(scale*0.5*ext + scale*0.14, -scale*0.55*ext); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-scale*0.14, -scale*0.45); ctx.lineTo(-scale*0.5*ext - scale*0.14, -scale*0.55*ext); ctx.stroke();
+  } else {
+    ctx.beginPath(); ctx.moveTo(scale*0.14, -scale*0.45); ctx.lineTo(scale*0.3, -scale*0.25); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-scale*0.14, -scale*0.45); ctx.lineTo(-scale*0.3, -scale*0.25); ctx.stroke();
+  }
+
+  // Gloves
+  ctx.fillStyle = '#ffff88';
+  if (diveT > 0) {
+    const ext = Math.min(diveT * 2.5, 1);
+    ctx.beginPath(); ctx.arc(scale*0.5*ext + scale*0.14, -scale*0.55*ext, scale*0.08, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(-scale*0.5*ext - scale*0.14, -scale*0.55*ext, scale*0.08, 0, Math.PI*2); ctx.fill();
+  } else {
+    ctx.beginPath(); ctx.arc(scale*0.3, -scale*0.25, scale*0.07, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(-scale*0.3, -scale*0.25, scale*0.07, 0, Math.PI*2); ctx.fill();
+  }
+
+  // Head
+  ctx.fillStyle = '#f5c8a0';
+  ctx.beginPath(); ctx.arc(0, -scale*0.7, scale*0.16, 0, Math.PI*2); ctx.fill();
+
+  // Hair
+  ctx.fillStyle = '#3a1a00';
+  ctx.beginPath(); ctx.arc(0, -scale*0.78, scale*0.14, Math.PI, Math.PI*2); ctx.fill();
+
+  // Eyes
+  ctx.fillStyle = '#111';
+  ctx.beginPath(); ctx.arc(-scale*0.05, -scale*0.7, scale*0.03, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(scale*0.05, -scale*0.7, scale*0.03, 0, Math.PI*2); ctx.fill();
+
+  ctx.restore();
+}
+
+function drawBall(bx, by, r, rot) {
+  ctx.save();
+  ctx.translate(bx, by);
+  if (rot !== undefined) ctx.rotate(rot);
+
+  // Ball shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath(); ctx.ellipse(0, r*0.4, r*0.8, r*0.2, 0, 0, Math.PI*2); ctx.fill();
+
+  // Ball body
+  const grad = ctx.createRadialGradient(-r*0.3, -r*0.3, r*0.1, 0, 0, r);
+  grad.addColorStop(0, '#ffffff');
+  grad.addColorStop(0.4, '#eeeeee');
+  grad.addColorStop(1, '#cccccc');
+  ctx.fillStyle = grad;
+  ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI*2); ctx.fill();
+
+  // Black patches (simplified pentagons)
+  ctx.fillStyle = '#111';
+  const patches = [
+    [0, 0],
+    [0, -r*0.52],
+    [r*0.5, -r*0.25],
+    [r*0.5, r*0.25],
+    [-r*0.5, r*0.25],
+    [-r*0.5, -r*0.25],
+  ];
+  for (const [px, py] of patches) {
+    ctx.beginPath();
+    ctx.arc(px, py, r * 0.21, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Shine
+  ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  ctx.beginPath(); ctx.ellipse(-r*0.28, -r*0.32, r*0.18, r*0.1, -0.6, 0, Math.PI*2); ctx.fill();
+
+  ctx.restore();
+}
+
+function drawAimLine() {
+  if (!aimLine) return;
+  const sc = getScene();
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255, 220, 0, 0.85)';
+  ctx.lineWidth = 2.5;
+  ctx.setLineDash([8, 6]);
+  ctx.lineDashOffset = (Date.now() / 40) % 14;
+  ctx.beginPath();
+  ctx.moveTo(aimLine.x1, aimLine.y1);
+  ctx.lineTo(aimLine.x2, aimLine.y2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Arrowhead
+  const angle = Math.atan2(aimLine.y2 - aimLine.y1, aimLine.x2 - aimLine.x1);
+  ctx.fillStyle = 'rgba(255,220,0,0.9)';
+  ctx.translate(aimLine.x2, aimLine.y2);
+  ctx.rotate(angle);
+  ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-14,-6); ctx.lineTo(-14,6); ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+function drawAimReticle() {
+  if (!aimTarget) return;
+  const sc = getScene();
+  const { goalLeft, goalRight, goalTop, goalBot } = sc;
+  const rx = goalLeft + (aimTarget.gx + 1) * 0.5 * (goalRight - goalLeft);
+  const ry = goalTop + (1 - aimTarget.gy) * (goalBot - goalTop);
+
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,80,80,0.9)';
+  ctx.lineWidth = 2;
+  const rs = 16;
+  ctx.beginPath(); ctx.moveTo(rx - rs, ry); ctx.lineTo(rx + rs, ry); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(rx, ry - rs); ctx.lineTo(rx, ry + rs); ctx.stroke();
+  ctx.beginPath(); ctx.arc(rx, ry, rs*0.6, 0, Math.PI*2); ctx.stroke();
+  ctx.restore();
+}
+
+// ── Spin canvas ──
+function drawSpinCanvas() {
+  const sw = spinCanvas.width, sh = spinCanvas.height;
+  const cx = sw/2, cy = sh/2, r = sw*0.46;
+
+  spinCtx.clearRect(0, 0, sw, sh);
+
+  // Ball background
+  const grad = spinCtx.createRadialGradient(cx-r*0.3, cy-r*0.3, r*0.1, cx, cy, r);
+  grad.addColorStop(0, '#ffffff');
+  grad.addColorStop(0.5, '#eeeeee');
+  grad.addColorStop(1, '#aaaaaa');
+  spinCtx.fillStyle = grad;
+  spinCtx.beginPath(); spinCtx.arc(cx, cy, r, 0, Math.PI*2); spinCtx.fill();
+
+  // Patches
+  spinCtx.fillStyle = '#222';
+  const patches = [[cx, cy],[cx, cy-r*0.42],[cx+r*0.38,cy-r*0.2],[cx+r*0.38,cy+r*0.2],[cx-r*0.38,cy+r*0.2],[cx-r*0.38,cy-r*0.2]];
+  for (const [px, py] of patches) {
+    spinCtx.beginPath(); spinCtx.arc(px, py, r*0.19, 0, Math.PI*2); spinCtx.fill();
+  }
+
+  // Crosshair guide
+  spinCtx.strokeStyle = 'rgba(0,150,255,0.35)';
+  spinCtx.lineWidth = 1;
+  spinCtx.beginPath(); spinCtx.moveTo(cx, cy-r); spinCtx.lineTo(cx, cy+r); spinCtx.stroke();
+  spinCtx.beginPath(); spinCtx.moveTo(cx-r, cy); spinCtx.lineTo(cx+r, cy); spinCtx.stroke();
+
+  // Spin labels
+  spinCtx.fillStyle = 'rgba(50,150,255,0.85)';
+  spinCtx.font = `bold ${sw*0.1}px Arial`;
+  spinCtx.textAlign = 'center';
+  spinCtx.fillText('TOP', cx, cy - r*0.62);
+  spinCtx.fillText('BOT', cx, cy + r*0.75);
+  spinCtx.textAlign = 'right';
+  spinCtx.fillText('L', cx - r*0.6, cy + r*0.08);
+  spinCtx.textAlign = 'left';
+  spinCtx.fillText('R', cx + r*0.6, cy + r*0.08);
+
+  // Chosen dot
+  if (spinChosen) {
+    const dx = cx + (spinX - 0.5) * 2 * r * 0.85;
+    const dy = cy + (spinY - 0.5) * 2 * r * 0.85;
+    spinCtx.fillStyle = 'rgba(255,50,50,0.9)';
+    spinCtx.beginPath(); spinCtx.arc(dx, dy, 7, 0, Math.PI*2); spinCtx.fill();
+    spinCtx.strokeStyle = '#fff';
+    spinCtx.lineWidth = 2;
+    spinCtx.stroke();
+  }
+}
+
+// ── Physics ──
+const GRAVITY = -9.8;
+const DRAG_K = 0.008;
+const MAGNUS_K = 0.12;
+const DT = 0.016;
+const FIELD_DIST = 11; // metres (penalty spot)
+
+let physBall = null; // { x, y, z, vx, vy, vz, wx, wy, wz, t, done }
+// coordinate: x = right, y = up, z = depth (toward goal, z=0 at ball, z=11 at goal)
+
+function startFlight() {
+  const sc = getScene();
+  if (!aimTarget) aimTarget = { gx: 0, gy: 0.5 };
+
+  // Convert aim to goal coords in metres
+  // Goal width ~7.32m, height ~2.44m
+  const GOAL_W = 7.32;
+  const GOAL_H = 2.44;
+  const targetX = aimTarget.gx * GOAL_W * 0.45; // -3.3..3.3m
+  const targetY = aimTarget.gy * GOAL_H;         // 0..2.44m
+  const targetZ = FIELD_DIST;
+
+  const spd = 15 + power * 0.25; // 15–40 m/s
+  const flightTime = FIELD_DIST / spd * 1.2;
+
+  // Base velocity toward target
+  const vx = targetX / flightTime;
+  const vy = (targetY - GRAVITY * 0.5 * flightTime * flightTime) / flightTime;
+  const vz = spd * 0.98;
+
+  // Spin from spin canvas (spinX/Y in 0..1)
+  const sx = (spinX - 0.5) * 2; // -1..1 (right curl positive)
+  const sy = (spinY - 0.5) * -2; // -1..1 (topspin positive when sy<0.5)
+
+  physBall = {
+    x: 0, y: 0.3, z: 0,
+    vx, vy, vz,
+    wx: sy * 8,  // topspin/backspin around x-axis
+    wy: -sx * 8, // curl around y-axis
+    wz: 0,
+    t: 0, done: false, reachedGoal: false
+  };
+
+  // Keeper dive: dive toward ball target side
+  keeperDiveDir = aimTarget.gx > 0.15 ? 1 : aimTarget.gx < -0.15 ? -1 : (Math.random() > 0.5 ? 1 : -1);
+  // Occasionally make keeper dive wrong way (0.3 probability)
+  if (Math.random() < 0.3) keeperDiveDir = -keeperDiveDir;
+  keeperDiveT = 0;
+  ballTrail = [];
+}
+
+function stepPhysics() {
+  if (!physBall || physBall.done) return;
+  const pb = physBall;
+
+  const speed = Math.sqrt(pb.vx*pb.vx + pb.vy*pb.vy + pb.vz*pb.vz);
+  const drag = DRAG_K * speed;
+
+  // Magnus: omega × velocity
+  // omega = (wx, wy, wz), v = (vx, vy, vz)
+  // F = MAGNUS_K * (omega × v)
+  const magX = MAGNUS_K * (pb.wy * pb.vz - pb.wz * pb.vy);
+  const magY = MAGNUS_K * (pb.wz * pb.vx - pb.wx * pb.vz);
+  const magZ = MAGNUS_K * (pb.wx * pb.vy - pb.wy * pb.vx);
+
+  pb.vx += (-drag * pb.vx + magX) * DT;
+  pb.vy += (GRAVITY + (-drag * pb.vy + magY)) * DT;
+  pb.vz += (-drag * pb.vz + magZ) * DT;
+
+  pb.x += pb.vx * DT;
+  pb.y += pb.vy * DT;
+  pb.z += pb.vz * DT;
+  pb.t += DT;
+
+  ballTrail.push({ x: pb.x, y: pb.y, z: pb.z });
+  if (ballTrail.length > 30) ballTrail.shift();
+
+  // Check if reached goal plane
+  if (pb.z >= FIELD_DIST && !pb.reachedGoal) {
+    pb.reachedGoal = true;
+    const GOAL_W_HALF = 3.66;
+    const GOAL_H = 2.44;
+    const KEEPER_W = 1.0; // effective keeper reach
+
+    const inGoal = Math.abs(pb.x) < GOAL_W_HALF && pb.y > 0 && pb.y < GOAL_H;
+    if (!inGoal) {
+      goalDecision = 'miss';
+    } else {
+      // Check keeper
+      const keeperX = keeperDiveDir * GOAL_W_HALF * 0.6 * Math.min(keeperDiveT * 1.5, 1);
+      const keeperY = 1.0;
+      const dx = Math.abs(pb.x - keeperX);
+      const dy = Math.abs(pb.y - keeperY);
+      const reach = KEEPER_W * (1 + Math.min(keeperDiveT, 0.5));
+      if (dx < reach && dy < reach * 1.4) {
+        goalDecision = 'saved';
+      } else {
+        goalDecision = 'goal';
+      }
+    }
+    pb.done = true;
+    setTimeout(showResult, 600);
+  }
+
+  if (pb.y < -0.5 || pb.t > 3) {
+    pb.done = true;
+    if (!goalDecision) goalDecision = 'miss';
+    setTimeout(showResult, 400);
+  }
+}
+
+function showResult() {
+  const el = document.getElementById('result-overlay');
+  const txt = document.getElementById('result-text');
+  el.style.display = 'flex';
+  if (goalDecision === 'goal') {
+    txt.textContent = 'GOAL!';
+    txt.style.color = '#00ff44';
+  } else if (goalDecision === 'saved') {
+    txt.textContent = 'SAVED!';
+    txt.style.color = '#ff8800';
+  } else {
+    txt.textContent = 'MISS!';
+    txt.style.color = '#ff2222';
+  }
+  phase = 'result';
+}
+
+// ── Project 3D ball to screen ──
+function project3D(pb) {
+  const sc = getScene();
+  const { VP, BALL_X, BALL_Y, goalLeft, goalRight, goalTop, goalBot } = sc;
+
+  // Map z: 0 (ball pos) → BALL_Y; FIELD_DIST → goalBot
+  const t = pb.z / FIELD_DIST;
+  const GOAL_W = 7.32;
+
+  // Screen Y: as ball rises in world (pb.y), it goes up on screen
+  const screenZ_y = BALL_Y + (VP.y - BALL_Y) * t;
+  const GOAL_H = 2.44;
+  const pxPerMeter_y = (goalBot - goalTop) / GOAL_H;
+  const baseY = screenZ_y - pb.y * pxPerMeter_y * (1 - t * 0.6);
+
+  // Screen X
+  const screenZ_x = BALL_X + (VP.x - BALL_X) * t;
+  const goalPxW = goalRight - goalLeft;
+  const pxPerMeter_x = goalPxW / GOAL_W;
+  const screenX = screenZ_x + pb.x * pxPerMeter_x * (1 - t * 0.5);
+
+  // Scale ball with depth
+  const ballR_screen = sc.BALL_R * (1 - t * 0.65);
+
+  return { sx: screenX, sy: baseY, r: Math.max(ballR_screen, 3) };
+}
+
+// ── Main draw loop ──
+let ballRot = 0;
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+  drawSky();
+  drawPitch();
+
+  const sc = getScene();
+
+  // Draw trail
+  if (ballTrail.length > 1) {
+    for (let i = 1; i < ballTrail.length; i++) {
+      const p = project3D(ballTrail[i]);
+      const alpha = i / ballTrail.length * 0.5;
+      ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+      ctx.beginPath(); ctx.arc(p.sx, p.sy, p.r * 0.4, 0, Math.PI*2); ctx.fill();
+    }
+  }
+
+  drawGoal();
+  drawAimReticle();
+
+  // Draw keeper
+  if (phase === 'flight' || phase === 'result') {
+    drawKeeper(keeperDiveT, keeperDiveDir);
+  } else {
+    drawKeeper(0, 0);
+  }
+
+  // Draw ball
+  if (phase === 'flight' && physBall) {
+    const p = project3D(physBall);
+    drawBall(p.sx, p.sy, p.r, ballRot);
+    ballRot += 0.12;
+  } else if (phase !== 'result') {
+    drawBall(sc.BALL_X, sc.BALL_Y, sc.BALL_R, ballRot);
+  }
+
+  if (phase === 'aim') drawAimLine();
+}
+
+// ── Animation loop ──
+let lastTime = 0;
+function loop(ts) {
+  if (phase === 'flight') {
+    const elapsed = ts - lastTime;
+    if (elapsed >= 16) {
+      stepPhysics();
+      keeperDiveT += 0.035;
+      lastTime = ts;
+    }
+  }
+  draw();
+  animFrame = requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+// ── Phase transitions ──
+function toPhase(p) {
+  phase = p;
+  document.getElementById('instruction').style.display = 'none';
+  document.getElementById('power-container').style.display = 'none';
+  document.getElementById('hold-btn').style.display = 'none';
+  document.getElementById('spin-container').style.display = 'none';
+
+  if (p === 'aim') {
+    document.getElementById('instruction').style.display = 'block';
+    document.getElementById('instruction').textContent = 'Drag from ball toward goal to aim';
+  } else if (p === 'power') {
+    document.getElementById('instruction').style.display = 'block';
+    document.getElementById('instruction').textContent = 'Hold the button to build power';
+    document.getElementById('power-container').style.display = 'flex';
+    document.getElementById('hold-btn').style.display = 'block';
+  } else if (p === 'spin') {
+    document.getElementById('instruction').style.display = 'block';
+    document.getElementById('instruction').textContent = 'Tap ball for spin direction, then SHOOT';
+    document.getElementById('spin-container').style.display = 'flex';
+    spinChosen = false; spinX = 0.5; spinY = 0.5;
+    drawSpinCanvas();
+  } else if (p === 'flight') {
+    startFlight();
+  }
+}
+
+function resetGame() {
+  phase = 'aim';
+  aimLine = null; aimTarget = null;
+  power = 0; spinChosen = false;
+  spinX = 0.5; spinY = 0.5;
+  physBall = null; goalDecision = null;
+  keeperDiveT = 0; ballTrail = [];
+  clearInterval(powerInterval); powerInterval = null;
+  document.getElementById('power-bar').style.width = '0%';
+  document.getElementById('power-pct').textContent = '0%';
+  document.getElementById('result-overlay').style.display = 'none';
+  toPhase('aim');
+}
+
+// ── Input: AIM phase ──
+function getPos(e) {
+  const r = canvas.getBoundingClientRect();
+  if (e.touches) {
+    return { x: e.touches[0].clientX - r.left, y: e.touches[0].clientY - r.top };
+  }
+  return { x: e.clientX - r.left, y: e.clientY - r.top };
+}
+
+function screenToGoalTarget(ex, ey) {
+  const sc = getScene();
+  const { VP, BALL_X, BALL_Y, goalLeft, goalRight, goalTop, goalBot } = sc;
+  // Extrapolate aim line to goal level
+  const dx = ex - BALL_X, dy = ey - BALL_Y;
+  if (Math.abs(dy) < 1) return null;
+  // Find where line hits goal row (goalBot y level in screen)
+  const t = (goalBot - BALL_Y) / dy;
+  const gx_screen = BALL_X + dx * t;
+  const gy_screen = ey + (BALL_Y - ey) * Math.abs(t); // simplified
+
+  // Goal height from drag: upward drag → higher shot
+  const dragFraction = Math.max(0, Math.min(1, (BALL_Y - ey) / (BALL_Y - goalTop)));
+  const gx = ((gx_screen - goalLeft) / (goalRight - goalLeft)) * 2 - 1;
+  return { gx: Math.max(-1.3, Math.min(1.3, gx)), gy: Math.max(0, Math.min(1, dragFraction)) };
+}
+
+canvas.addEventListener('mousedown', onDown);
+canvas.addEventListener('mousemove', onMove);
+canvas.addEventListener('mouseup', onUp);
+canvas.addEventListener('touchstart', e => { e.preventDefault(); onDown(e); }, { passive: false });
+canvas.addEventListener('touchmove', e => { e.preventDefault(); onMove(e); }, { passive: false });
+canvas.addEventListener('touchend', e => { e.preventDefault(); onUp(e); }, { passive: false });
+
+function onDown(e) {
+  if (phase !== 'aim') return;
+  const pos = getPos(e);
+  const sc = getScene();
+  const dist = Math.hypot(pos.x - sc.BALL_X, pos.y - sc.BALL_Y);
+  if (dist < sc.BALL_R * 3.5) {
+    isDragging = true;
+    dragStart = { x: sc.BALL_X, y: sc.BALL_Y };
+    aimLine = { x1: sc.BALL_X, y1: sc.BALL_Y, x2: pos.x, y2: pos.y };
+  }
+}
+
+function onMove(e) {
+  if (!isDragging || phase !== 'aim') return;
+  const pos = getPos(e);
+  aimLine = { x1: dragStart.x, y1: dragStart.y, x2: pos.x, y2: pos.y };
+  aimTarget = screenToGoalTarget(pos.x, pos.y);
+}
+
+function onUp(e) {
+  if (!isDragging || phase !== 'aim') return;
+  isDragging = false;
+  if (aimTarget) {
+    toPhase('power');
+  } else {
+    aimLine = null;
+  }
+}
+
+// ── Input: POWER phase ──
+const holdBtn = document.getElementById('hold-btn');
+let powerHolding = false;
+let powerDir2 = 1;
+
+function startPower() {
+  if (powerHolding) return;
+  powerHolding = true;
+  holdBtn.textContent = 'RELEASE!';
+  holdBtn.style.background = 'linear-gradient(135deg, #cc3300, #881100)';
+  powerInterval = setInterval(() => {
+    power += powerDir2 * 2.5;
+    if (power >= 100) { power = 100; powerDir2 = -1; }
+    if (power <= 0) { power = 0; powerDir2 = 1; }
+    document.getElementById('power-bar').style.width = power + '%';
+    document.getElementById('power-pct').textContent = Math.round(power) + '%';
+  }, 20);
+}
+
+function stopPower() {
+  if (!powerHolding) return;
+  powerHolding = false;
+  clearInterval(powerInterval);
+  holdBtn.textContent = 'HOLD FOR POWER';
+  holdBtn.style.background = 'linear-gradient(135deg, #1a6ed8, #0d4aab)';
+  toPhase('spin');
+}
+
+holdBtn.addEventListener('mousedown', startPower);
+holdBtn.addEventListener('mouseup', stopPower);
+holdBtn.addEventListener('mouseleave', stopPower);
+holdBtn.addEventListener('touchstart', e => { e.preventDefault(); startPower(); }, { passive: false });
+holdBtn.addEventListener('touchend', e => { e.preventDefault(); stopPower(); }, { passive: false });
+
+// ── Input: SPIN phase ──
+function getSpinPos(e) {
+  const r = spinCanvas.getBoundingClientRect();
+  if (e.touches) return { x: e.touches[0].clientX - r.left, y: e.touches[0].clientY - r.top };
+  return { x: e.clientX - r.left, y: e.clientY - r.top };
+}
+
+spinCanvas.addEventListener('mousedown', onSpinTap);
+spinCanvas.addEventListener('touchstart', e => { e.preventDefault(); onSpinTap(e); }, { passive: false });
+
+function onSpinTap(e) {
+  const pos = getSpinPos(e);
+  const sw = spinCanvas.width, sh = spinCanvas.height;
+  const cx = sw/2, cy = sh/2, r = sw*0.46;
+  const dx = pos.x - cx, dy = pos.y - cy;
+  if (Math.sqrt(dx*dx + dy*dy) < r) {
+    spinX = (pos.x / sw);
+    spinY = (pos.y / sh);
+    spinChosen = true;
+    drawSpinCanvas();
+  }
+}
+
+document.getElementById('shoot-btn').addEventListener('click', () => {
+  if (phase === 'spin') toPhase('flight');
+});
+document.getElementById('shoot-btn').addEventListener('touchstart', e => {
+  e.preventDefault();
+  if (phase === 'spin') toPhase('flight');
+}, { passive: false });
+
+// ── Result: tap to reset ──
+document.getElementById('result-overlay').addEventListener('click', resetGame);
+document.getElementById('result-overlay').addEventListener('touchstart', e => { e.preventDefault(); resetGame(); }, { passive: false });
+
+// ── Init ──
+toPhase('aim');
+</script>
+</body>
+</html>
