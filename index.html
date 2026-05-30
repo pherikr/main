@@ -5,845 +5,743 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Penalty Shot</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background: #000; overflow: hidden; touch-action: none; }
-  canvas { display: block; }
-  #ui {
-    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-    pointer-events: none; display: flex; flex-direction: column;
-    align-items: center; justify-content: flex-end; padding-bottom: 20px;
-  }
-  #instruction {
-    position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
-    color: #fff; font-family: 'Arial', sans-serif; font-size: 18px;
-    font-weight: bold; text-shadow: 2px 2px 4px #000;
-    background: rgba(0,0,0,0.5); padding: 8px 16px; border-radius: 20px;
-    text-align: center; pointer-events: none;
-  }
-  #power-container {
-    display: none; flex-direction: column; align-items: center; gap: 8px;
-    position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%);
-  }
-  #power-label { color: #fff; font-family: Arial; font-size: 16px; font-weight: bold; text-shadow: 1px 1px 3px #000; }
-  #power-bar-bg {
-    width: 200px; height: 28px; background: rgba(0,0,0,0.6);
-    border: 2px solid #fff; border-radius: 14px; overflow: hidden;
-  }
-  #power-bar {
-    height: 100%; width: 0%; border-radius: 12px;
-    background: linear-gradient(90deg, #00cc44, #ffcc00, #ff4400);
-    transition: none;
-  }
-  #power-pct { color: #fff; font-family: Arial; font-size: 14px; text-shadow: 1px 1px 3px #000; }
-  #hold-btn {
-    display: none; pointer-events: auto; cursor: pointer;
-    background: linear-gradient(135deg, #1a6ed8, #0d4aab);
-    color: #fff; font-family: Arial; font-size: 20px; font-weight: bold;
-    border: 3px solid #fff; border-radius: 50px; padding: 16px 40px;
-    text-shadow: 1px 1px 3px #000; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-    position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
-    user-select: none; -webkit-user-select: none;
-  }
-  #spin-container {
-    display: none; flex-direction: column; align-items: center; gap: 10px;
-    position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
-  }
-  #spin-label { color: #fff; font-family: Arial; font-size: 14px; font-weight: bold; text-shadow: 1px 1px 3px #000; }
-  #spin-canvas { border: 3px solid rgba(255,255,255,0.8); border-radius: 50%; cursor: crosshair; pointer-events: auto; }
-  #shoot-btn {
-    pointer-events: auto; cursor: pointer;
-    background: linear-gradient(135deg, #cc1111, #881111);
-    color: #fff; font-family: Arial; font-size: 22px; font-weight: bold;
-    border: 3px solid #fff; border-radius: 50px; padding: 14px 50px;
-    text-shadow: 1px 1px 3px #000; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-    user-select: none; -webkit-user-select: none;
-  }
-  #result-overlay {
-    display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-    align-items: center; justify-content: center; flex-direction: column;
-    background: rgba(0,0,0,0.5); pointer-events: auto; cursor: pointer;
-  }
-  #result-text {
-    font-family: 'Arial Black', Arial; font-size: 72px; font-weight: 900;
-    text-shadow: 4px 4px 0 #000, -2px -2px 0 #000;
-    animation: pulse 0.5s ease-in-out infinite alternate;
-  }
-  #result-sub {
-    font-family: Arial; font-size: 22px; color: #fff;
-    text-shadow: 2px 2px 4px #000; margin-top: 10px;
-  }
-  @keyframes pulse {
-    from { transform: scale(1); }
-    to { transform: scale(1.08); }
-  }
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#000; overflow:hidden; touch-action:none; }
+canvas { display:block; }
+#ui {
+  position:absolute; top:0; left:0; width:100%; height:100%;
+  pointer-events:none;
+}
+#msg {
+  position:absolute; top:16px; left:50%; transform:translateX(-50%);
+  color:#fff; font:bold 17px Arial; text-align:center;
+  background:rgba(0,0,0,0.55); padding:7px 18px; border-radius:20px;
+  white-space:nowrap; pointer-events:none;
+}
+/* Power bar */
+#powerWrap {
+  display:none; position:absolute; bottom:90px; left:50%; transform:translateX(-50%);
+  flex-direction:column; align-items:center; gap:6px;
+}
+#powerLabel { color:#fff; font:bold 14px Arial; }
+#powerBg {
+  width:220px; height:26px; background:rgba(0,0,0,0.6);
+  border:2px solid #fff; border-radius:13px; overflow:hidden;
+}
+#powerFill {
+  height:100%; width:0%; border-radius:11px;
+  background:linear-gradient(90deg,#00cc44,#ffcc00,#ff3300);
+}
+#powerPct { color:#fff; font:13px Arial; }
+#holdBtn {
+  display:none; position:absolute; bottom:18px; left:50%; transform:translateX(-50%);
+  pointer-events:auto; cursor:pointer;
+  background:linear-gradient(135deg,#1a6ed8,#0d4aab);
+  color:#fff; font:bold 20px Arial; border:3px solid #fff;
+  border-radius:50px; padding:15px 42px;
+  user-select:none; -webkit-user-select:none;
+}
+/* Spin */
+#spinWrap {
+  display:none; position:absolute; bottom:18px; left:50%; transform:translateX(-50%);
+  flex-direction:column; align-items:center; gap:10px;
+}
+#spinLabel { color:#fff; font:bold 14px Arial; }
+#spinCanvas { border:3px solid rgba(255,255,255,0.8); border-radius:50%; cursor:crosshair; pointer-events:auto; }
+#shootBtn {
+  pointer-events:auto; cursor:pointer;
+  background:linear-gradient(135deg,#cc1111,#881111);
+  color:#fff; font:bold 22px Arial; border:3px solid #fff;
+  border-radius:50px; padding:13px 48px;
+  user-select:none; -webkit-user-select:none;
+}
+/* Result */
+#result {
+  display:none; position:absolute; top:0; left:0; width:100%; height:100%;
+  align-items:center; justify-content:center; flex-direction:column;
+  background:rgba(0,0,0,0.45); pointer-events:auto; cursor:pointer;
+}
+#resultTxt {
+  font:900 80px "Arial Black",Arial;
+  text-shadow:4px 4px 0 #000,-2px -2px 0 #000;
+  animation:pulse 0.5s ease-in-out infinite alternate;
+}
+#resultSub { color:#fff; font:20px Arial; margin-top:10px; text-shadow:2px 2px 4px #000; }
+@keyframes pulse { from{transform:scale(1)} to{transform:scale(1.09)} }
 </style>
 </head>
 <body>
-<canvas id="main"></canvas>
+<canvas id="c"></canvas>
 <div id="ui">
-  <div id="instruction">Drag from ball toward goal to aim</div>
+  <div id="msg">Drag from the ball toward the goal to aim</div>
 </div>
-<div id="power-container">
-  <div id="power-label">POWER</div>
-  <div id="power-bar-bg"><div id="power-bar"></div></div>
-  <div id="power-pct">0%</div>
+<div id="powerWrap" style="display:none;position:absolute;bottom:90px;left:50%;transform:translateX(-50%);flex-direction:column;align-items:center;gap:6px;">
+  <div id="powerLabel">POWER</div>
+  <div id="powerBg"><div id="powerFill"></div></div>
+  <div id="powerPct">0%</div>
 </div>
-<button id="hold-btn">HOLD FOR POWER</button>
-<div id="spin-container">
-  <div id="spin-label">TAP BALL FOR SPIN</div>
-  <canvas id="spin-canvas" width="110" height="110"></canvas>
-  <button id="shoot-btn">SHOOT</button>
+<button id="holdBtn">HOLD FOR POWER</button>
+<div id="spinWrap" style="display:none;position:absolute;bottom:18px;left:50%;transform:translateX(-50%);flex-direction:column;align-items:center;gap:10px;">
+  <div id="spinLabel">TAP FOR SPIN</div>
+  <canvas id="spinCanvas" width="120" height="120"></canvas>
+  <button id="shootBtn">⚽ SHOOT</button>
 </div>
-<div id="result-overlay">
-  <div id="result-text"></div>
-  <div id="result-sub">Tap to play again</div>
+<div id="result">
+  <div id="resultTxt"></div>
+  <div id="resultSub">Tap anywhere to retry</div>
 </div>
 
 <script>
-const canvas = document.getElementById('main');
-const ctx = canvas.getContext('2d');
-const spinCanvas = document.getElementById('spin-canvas');
-const spinCtx = spinCanvas.getContext('2d');
-
+// ─── Canvas setup ─────────────────────────────────────────────────────────────
+const C = document.getElementById('c');
+const cx = C.getContext('2d');
+const SC = document.getElementById('spinCanvas');
+const scx = SC.getContext('2d');
 let W, H;
-function resize() {
-  W = canvas.width = window.innerWidth;
-  H = canvas.height = window.innerHeight;
+function resize(){
+  W = C.width = window.innerWidth;
+  H = C.height = window.innerHeight;
 }
 resize();
-window.addEventListener('resize', () => { resize(); draw(); });
+window.addEventListener('resize', resize);
 
-// ── Scene constants (recomputed on resize via getScene) ──
-function getScene() {
-  const VP = { x: W * 0.5, y: H * 0.38 }; // vanishing point
-  const BALL_X = W * 0.5;
-  const BALL_Y = H * 0.82;
-  const BALL_R = Math.min(W, H) * 0.028;
+// ─── Scene geometry ────────────────────────────────────────────────────────────
+// All derived from W/H so it's responsive.
+function S(){
+  // Vanishing point = optical centre of goal mouth (ground level)
+  const vpx = W * 0.5;
+  const vpy = H * 0.40;
 
-  // Goal in perspective
-  const goalW = W * 0.36;
-  const goalH = H * 0.16;
-  const goalLeft  = VP.x - goalW / 2;
-  const goalRight = VP.x + goalW / 2;
-  const goalTop   = VP.y - goalH;
-  const goalBot   = VP.y;
+  // Goal on screen
+  const gW  = W * 0.38;          // goal screen width
+  const gH  = H * 0.17;          // goal screen height
+  const gl  = vpx - gW/2;        // left post x
+  const gr  = vpx + gW/2;        // right post x
+  const gb  = vpy;               // crossbar is ABOVE vpy, ground IS vpy for goal face
+  const gt  = vpy - gH;          // crossbar y (screen)
 
-  return { VP, BALL_X, BALL_Y, BALL_R, goalW, goalH, goalLeft, goalRight, goalTop, goalBot };
+  // Ball resting position
+  const bx  = W * 0.5;
+  const by  = H * 0.84;
+  const br  = Math.min(W,H) * 0.030;
+
+  // px per real-world meter AT the goal line
+  const pxmX = gW / 7.32;       // 7.32m real goal width
+  const pxmY = gH / 2.44;       // 2.44m real goal height
+
+  return {vpx,vpy,gW,gH,gl,gr,gb,gt,bx,by,br,pxmX,pxmY};
 }
 
-// ── Game state ──
+// ─── Project 3D world point to screen ─────────────────────────────────────────
+// World: x=right, y=up, z=forward (ball at z=0, goal at z=11)
+// At z=0 the "ground" is at screen y=by and world x=0 is screen x=bx
+// At z=PDIST the goal frame sits at the goal screen coords
+const PDIST = 11;
+
+function proj(wx, wy, wz){
+  const sc = S();
+  if(wz < 0) wz = 0;
+  const t = wz / PDIST; // 0 at ball, 1 at goal
+
+  // Ground-level screen point at this depth (linear perspective)
+  const gsx = sc.bx + (sc.vpx - sc.bx) * t;  // converges to vpx
+  const gsy = sc.by + (sc.gb  - sc.by) * t;   // converges to gb
+
+  // Pixel-per-meter scale grows with depth (perspective foreshortening)
+  const scaleX = sc.pxmX * t;
+  const scaleY = sc.pxmY * t;
+
+  // Near-camera: boost scale so ball looks proper size at z≈0
+  // Blend to a minimum scale at t=0 so ball isn't invisible
+  const minScale = sc.br / 0.11; // 1 = 0.11m radius ball → sc.br pixels
+  const effScaleX = Math.max(scaleX, minScale * 0.5);
+  const effScaleY = Math.max(scaleY, minScale * 0.5);
+
+  const sx = gsx + wx * effScaleX;
+  const sy = gsy - wy * effScaleY; // up = negative screen y
+
+  // Ball radius shrinks with depth
+  const r = sc.br * (1 - t * 0.80);
+
+  return { sx, sy, r: Math.max(r, 3) };
+}
+
+// ─── Game state ───────────────────────────────────────────────────────────────
 let phase = 'aim'; // aim | power | spin | flight | result
-let aimLine = null;   // { x1,y1,x2,y2 } in screen coords
-let aimTarget = null; // { gx, gy } normalised goal coords (-1..1 horiz, 0..1 vert bottom=0)
-let power = 0;
-let powerInterval = null;
-let powerDir = 1;
-let spinX = 0.5, spinY = 0.5; // 0..1 on spin circle
-let spinChosen = false;
 
-// Flight
-let ballPos = { x: 0, y: 0 };
-let ballVel = { x: 0, y: 0, z: 0 };
-let ballSpin = { wx: 0, wy: 0, wz: 0 };
-let flightT = 0;
-let keeperDiveDir = 0; // -1 left, 0, 1 right
-let keeperDiveT = 0;
-let goalDecision = null; // 'goal' | 'saved' | 'miss'
-let ballTrail = [];
-let isDragging = false;
-let dragStart = null;
-let animFrame = null;
+// Aim
+let dragging = false, dragSx, dragSy, curSx, curSy;
+let aimTX = 0, aimTY = 0.5; // target in goal: x ∈ [-1,1], y ∈ [0,1]
 
-// ── Draw functions ──
-function drawSky() {
-  const grad = ctx.createLinearGradient(0, 0, 0, H * 0.55);
-  grad.addColorStop(0, '#0a0a1e');
-  grad.addColorStop(0.5, '#1a1a4e');
-  grad.addColorStop(1, '#2d5a8e');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, W, H * 0.55);
+// Power
+let power = 0, powerDir = 1, powerIv = null, holding = false;
+
+// Spin  (0.5,0.5 = no spin; x>0.5 = right curl; y<0.5 = topspin)
+let spinX = 0.5, spinY = 0.5, spinChosen = false;
+
+// Ball flight
+let ball = null;  // {x,y,z, vx,vy,vz, wx,wy,wz}
+let trail = [];
+let keepDir = 0;   // -1 left, 0, +1 right
+let keepProg = 0;  // 0→1 over flight
+let flightLen = 0; // expected flight time in sim steps
+let stepCount = 0;
+let outcome = null; // 'goal'|'saved'|'miss'
+let rot = 0;
+
+// ─── Drawing helpers ──────────────────────────────────────────────────────────
+function drawSky(){
+  const g = cx.createLinearGradient(0,0,0,H*0.52);
+  g.addColorStop(0,'#080818'); g.addColorStop(1,'#1b3a6e');
+  cx.fillStyle=g; cx.fillRect(0,0,W,H*0.52);
   // stars
-  ctx.fillStyle = 'rgba(255,255,255,0.6)';
-  const stars = [[0.1,0.05],[0.2,0.12],[0.35,0.03],[0.5,0.08],[0.65,0.02],[0.78,0.1],[0.88,0.06],[0.15,0.18],[0.45,0.15],[0.72,0.19],[0.92,0.14]];
-  for (const [sx,sy] of stars) {
-    ctx.beginPath(); ctx.arc(sx*W, sy*H, 1.5, 0, Math.PI*2); ctx.fill();
+  cx.fillStyle='rgba(255,255,255,0.7)';
+  for(const [fx,fy] of [[.08,.06],[.19,.13],[.31,.04],[.44,.09],[.57,.03],[.68,.14],[.77,.07],[.87,.11],[.94,.05],[.13,.2],[.5,.17],[.73,.21]]){
+    cx.beginPath(); cx.arc(fx*W, fy*H, 1.2,0,Math.PI*2); cx.fill();
   }
 }
 
-function drawPitch() {
-  const sc = getScene();
-  const VP = sc.VP;
-  // pitch gradient
-  const grad = ctx.createLinearGradient(0, H * 0.55, 0, H);
-  grad.addColorStop(0, '#1a5c1a');
-  grad.addColorStop(0.5, '#1e6b1e');
-  grad.addColorStop(1, '#14491e');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, H * 0.54, W, H);
+function drawPitch(){
+  const sc=S();
+  const g=cx.createLinearGradient(0,H*0.5,0,H);
+  g.addColorStop(0,'#1a5c1a'); g.addColorStop(0.6,'#1e6b1e'); g.addColorStop(1,'#12401a');
+  cx.fillStyle=g; cx.fillRect(0,H*0.5,W,H);
 
-  // perspective lines from ball toward vanishing point
-  ctx.strokeStyle = 'rgba(255,255,255,0.12)';
-  ctx.lineWidth = 1;
-  const numLines = 8;
-  for (let i = 0; i <= numLines; i++) {
-    const bx = (i / numLines) * W;
-    ctx.beginPath(); ctx.moveTo(bx, H); ctx.lineTo(VP.x, VP.y); ctx.stroke();
+  // pitch lines from bottom corners to vanishing point
+  cx.strokeStyle='rgba(255,255,255,0.10)'; cx.lineWidth=1;
+  for(let i=0;i<=10;i++){
+    const bx2=(i/10)*W;
+    cx.beginPath(); cx.moveTo(bx2,H); cx.lineTo(sc.vpx,sc.vpy); cx.stroke();
   }
 
-  // pitch stripes
-  for (let s = 0; s < 6; s++) {
-    const t1 = s / 6, t2 = (s + 1) / 6;
-    const y1 = VP.y + (H - VP.y) * t1;
-    const y2 = VP.y + (H - VP.y) * t2;
-    if (s % 2 === 0) {
-      ctx.fillStyle = 'rgba(0,0,0,0.06)';
-      ctx.fillRect(0, y1, W, y2 - y1);
-    }
+  // alternating mow stripes
+  for(let s=0;s<8;s++){
+    const t1=s/8, t2=(s+1)/8;
+    const y1=sc.vpy+(H-sc.vpy)*t1, y2=sc.vpy+(H-sc.vpy)*t2;
+    if(s%2===0){ cx.fillStyle='rgba(0,0,0,0.06)'; cx.fillRect(0,y1,W,y2-y1); }
   }
 
-  // centre mark / penalty spot
-  ctx.strokeStyle = 'rgba(255,255,255,0.25)';
-  ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.arc(W*0.5, H*0.8, 5, 0, Math.PI*2); ctx.stroke();
+  // penalty spot
+  cx.strokeStyle='rgba(255,255,255,0.3)'; cx.lineWidth=2;
+  cx.beginPath(); cx.arc(W*0.5,H*0.83,5,0,Math.PI*2); cx.stroke();
 }
 
-function drawGoal() {
-  const sc = getScene();
-  const { goalLeft, goalRight, goalTop, goalBot, VP } = sc;
+function drawGoal(){
+  const sc=S();
+  const {gl,gr,gt,gb}=sc;
 
-  // Net shading
-  ctx.fillStyle = 'rgba(0,0,0,0.25)';
-  ctx.beginPath();
-  ctx.moveTo(goalLeft, goalTop);
-  ctx.lineTo(goalRight, goalTop);
-  ctx.lineTo(goalRight, goalBot);
-  ctx.lineTo(goalLeft, goalBot);
-  ctx.closePath();
-  ctx.fill();
+  // net shadow
+  cx.fillStyle='rgba(0,0,0,0.3)';
+  cx.fillRect(gl,gt,gr-gl,gb-gt);
 
-  // Net grid
-  ctx.strokeStyle = 'rgba(255,255,255,0.18)';
-  ctx.lineWidth = 0.8;
-  const cols = 8, rows = 5;
-  for (let c = 0; c <= cols; c++) {
-    const gx = goalLeft + (goalRight - goalLeft) * (c / cols);
-    ctx.beginPath(); ctx.moveTo(gx, goalTop); ctx.lineTo(gx, goalBot); ctx.stroke();
+  // net grid
+  cx.strokeStyle='rgba(255,255,255,0.15)'; cx.lineWidth=0.7;
+  const nc=10, nr=6;
+  for(let i=0;i<=nc;i++){
+    const gx2=gl+(gr-gl)*i/nc;
+    cx.beginPath(); cx.moveTo(gx2,gt); cx.lineTo(gx2,gb); cx.stroke();
   }
-  for (let r = 0; r <= rows; r++) {
-    const gy = goalTop + (goalBot - goalTop) * (r / rows);
-    ctx.beginPath(); ctx.moveTo(goalLeft, gy); ctx.lineTo(goalRight, gy); ctx.stroke();
+  for(let j=0;j<=nr;j++){
+    const gy2=gt+(gb-gt)*j/nr;
+    cx.beginPath(); cx.moveTo(gl,gy2); cx.lineTo(gr,gy2); cx.stroke();
   }
 
-  // Posts
-  const postW = 6;
-  ctx.fillStyle = '#ffffff';
-  ctx.shadowColor = 'rgba(255,255,255,0.5)';
-  ctx.shadowBlur = 8;
-  // Left post
-  ctx.fillRect(goalLeft - postW/2, goalTop, postW, goalBot - goalTop);
-  // Right post
-  ctx.fillRect(goalRight - postW/2, goalTop, postW, goalBot - goalTop);
-  // Crossbar
-  ctx.fillRect(goalLeft - postW/2, goalTop - postW/2, goalRight - goalLeft + postW, postW);
-  ctx.shadowBlur = 0;
+  // posts
+  cx.fillStyle='#fff';
+  cx.shadowColor='rgba(255,255,255,0.6)'; cx.shadowBlur=10;
+  const pw=5;
+  cx.fillRect(gl-pw/2, gt-pw/2, pw, gb-gt+pw);  // left
+  cx.fillRect(gr-pw/2, gt-pw/2, pw, gb-gt+pw);  // right
+  cx.fillRect(gl-pw/2, gt-pw/2, gr-gl+pw, pw);  // crossbar
+  cx.shadowBlur=0;
 }
 
-function drawKeeper(diveT, diveDir) {
-  const sc = getScene();
-  const { goalLeft, goalRight, goalTop, goalBot } = sc;
-  const cx = (goalLeft + goalRight) / 2;
-  const cy = goalBot;
-  const scale = (goalBot - goalTop) * 0.75;
+function drawKeeper(){
+  const sc=S();
+  const {gl,gr,gt,gb}=sc;
+  const kh=gb-gt;           // keeper height on screen
+  const kw=kh*0.35;         // half-width
+  const kcx=(gl+gr)/2;      // centre x
+  const kcy=gb;             // feet at ground
 
-  ctx.save();
-  ctx.translate(cx, cy);
+  // Dive offset
+  const maxDive=(gr-gl)*0.44;
+  const diveX=keepDir*maxDive*keepProg;
+  const diveAngle=keepDir*(Math.PI*0.4)*keepProg;
+  const floatY=-kh*0.18*Math.sin(keepProg*Math.PI);
 
-  // Dive animation
-  if (diveT > 0) {
-    const maxDive = (goalRight - goalLeft) * 0.42;
-    const diveX = diveDir * maxDive * Math.min(diveT * 1.8, 1);
-    const diveAngle = diveDir * Math.PI * 0.38 * Math.min(diveT * 2, 1);
-    const floatY = -scale * 0.25 * Math.sin(Math.min(diveT * 2, 1) * Math.PI);
-    ctx.translate(diveX, floatY);
-    ctx.rotate(diveAngle);
-  }
+  cx.save();
+  cx.translate(kcx+diveX, kcy+floatY);
+  cx.rotate(diveAngle);
 
-  const s = scale * 0.012; // unit scale
+  const ks=kh;  // scale
 
-  // Legs
-  ctx.strokeStyle = '#1a3a8c';
-  ctx.lineWidth = scale * 0.1;
-  ctx.lineCap = 'round';
-  if (diveT > 0) {
-    // Extended legs during dive
-    ctx.beginPath(); ctx.moveTo(0, scale*0.1); ctx.lineTo(scale*0.25, scale*0.55); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(0, scale*0.1); ctx.lineTo(-scale*0.25, scale*0.55); ctx.stroke();
+  // legs
+  cx.strokeStyle='#1a2e8c'; cx.lineWidth=ks*0.09; cx.lineCap='round';
+  if(keepProg>0.05){
+    cx.beginPath(); cx.moveTo(-ks*0.05,0); cx.lineTo(ks*0.28,-ks*0.42); cx.stroke();
+    cx.beginPath(); cx.moveTo(ks*0.05,0);  cx.lineTo(-ks*0.28,-ks*0.42); cx.stroke();
   } else {
-    ctx.beginPath(); ctx.moveTo(scale*0.08, scale*0.08); ctx.lineTo(scale*0.1, scale*0.55); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(-scale*0.08, scale*0.08); ctx.lineTo(-scale*0.1, scale*0.55); ctx.stroke();
+    cx.beginPath(); cx.moveTo(-ks*0.09,0); cx.lineTo(-ks*0.1,-ks*0.48); cx.stroke();
+    cx.beginPath(); cx.moveTo(ks*0.09,0);  cx.lineTo(ks*0.1,-ks*0.48); cx.stroke();
   }
 
-  // Torso
-  ctx.fillStyle = '#e8a020';
-  ctx.beginPath();
-  ctx.roundRect(-scale*0.14, -scale*0.55, scale*0.28, scale*0.45, scale*0.04);
-  ctx.fill();
+  // torso
+  cx.fillStyle='#e8a020';
+  cx.beginPath();
+  cx.roundRect(-ks*0.13,-ks*0.9, ks*0.26,ks*0.42, ks*0.05);
+  cx.fill();
 
-  // Arms
-  ctx.strokeStyle = '#e8a020';
-  ctx.lineWidth = scale * 0.09;
-  if (diveT > 0) {
-    const ext = Math.min(diveT * 2.5, 1);
-    ctx.beginPath(); ctx.moveTo(scale*0.14, -scale*0.45); ctx.lineTo(scale*0.5*ext + scale*0.14, -scale*0.55*ext); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(-scale*0.14, -scale*0.45); ctx.lineTo(-scale*0.5*ext - scale*0.14, -scale*0.55*ext); ctx.stroke();
+  // number on jersey
+  cx.fillStyle='rgba(255,255,255,0.7)'; cx.font=`bold ${ks*0.18}px Arial`;
+  cx.textAlign='center'; cx.fillText('1',-0,-ks*0.73);
+
+  // arms
+  cx.strokeStyle='#e8a020'; cx.lineWidth=ks*0.085; cx.lineCap='round';
+  if(keepProg>0.1){
+    const ext=Math.min(keepProg*2,1);
+    cx.beginPath(); cx.moveTo(-ks*0.13,-ks*0.82); cx.lineTo(-ks*(0.13+0.42*ext),-ks*(0.82-0.3*ext)); cx.stroke();
+    cx.beginPath(); cx.moveTo(ks*0.13,-ks*0.82);  cx.lineTo(ks*(0.13+0.42*ext),-ks*(0.82-0.3*ext)); cx.stroke();
+    // gloves
+    cx.fillStyle='#ffee44';
+    cx.beginPath(); cx.arc(-ks*(0.13+0.42*ext),-ks*(0.82-0.3*ext),ks*0.075,0,Math.PI*2); cx.fill();
+    cx.beginPath(); cx.arc(ks*(0.13+0.42*ext),-ks*(0.82-0.3*ext),ks*0.075,0,Math.PI*2); cx.fill();
   } else {
-    ctx.beginPath(); ctx.moveTo(scale*0.14, -scale*0.45); ctx.lineTo(scale*0.3, -scale*0.25); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(-scale*0.14, -scale*0.45); ctx.lineTo(-scale*0.3, -scale*0.25); ctx.stroke();
+    cx.beginPath(); cx.moveTo(-ks*0.13,-ks*0.82); cx.lineTo(-ks*0.28,-ks*0.62); cx.stroke();
+    cx.beginPath(); cx.moveTo(ks*0.13,-ks*0.82);  cx.lineTo(ks*0.28,-ks*0.62); cx.stroke();
+    cx.fillStyle='#ffee44';
+    cx.beginPath(); cx.arc(-ks*0.28,-ks*0.62,ks*0.065,0,Math.PI*2); cx.fill();
+    cx.beginPath(); cx.arc(ks*0.28,-ks*0.62,ks*0.065,0,Math.PI*2); cx.fill();
   }
 
-  // Gloves
-  ctx.fillStyle = '#ffff88';
-  if (diveT > 0) {
-    const ext = Math.min(diveT * 2.5, 1);
-    ctx.beginPath(); ctx.arc(scale*0.5*ext + scale*0.14, -scale*0.55*ext, scale*0.08, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(-scale*0.5*ext - scale*0.14, -scale*0.55*ext, scale*0.08, 0, Math.PI*2); ctx.fill();
-  } else {
-    ctx.beginPath(); ctx.arc(scale*0.3, -scale*0.25, scale*0.07, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(-scale*0.3, -scale*0.25, scale*0.07, 0, Math.PI*2); ctx.fill();
+  // head
+  cx.fillStyle='#f5c8a0';
+  cx.beginPath(); cx.arc(0,-ks*1.06,ks*0.155,0,Math.PI*2); cx.fill();
+  cx.fillStyle='#3a1800';
+  cx.beginPath(); cx.arc(0,-ks*1.13,ks*0.13,Math.PI,Math.PI*2); cx.fill();
+  cx.fillStyle='#111';
+  cx.beginPath(); cx.arc(-ks*0.055,-ks*1.05,ks*0.025,0,Math.PI*2); cx.fill();
+  cx.beginPath(); cx.arc(ks*0.055,-ks*1.05,ks*0.025,0,Math.PI*2); cx.fill();
+
+  cx.restore();
+}
+
+function drawBall(sx, sy, r, rotation){
+  cx.save();
+  cx.translate(sx, sy);
+  if(rotation) cx.rotate(rotation);
+
+  // shadow on ground
+  cx.fillStyle='rgba(0,0,0,0.25)';
+  cx.beginPath(); cx.ellipse(0,r*0.45,r*0.75,r*0.18,0,0,Math.PI*2); cx.fill();
+
+  // ball body
+  const bg=cx.createRadialGradient(-r*0.3,-r*0.35,r*0.08,0,0,r);
+  bg.addColorStop(0,'#fff'); bg.addColorStop(0.45,'#eee'); bg.addColorStop(1,'#bbb');
+  cx.fillStyle=bg;
+  cx.beginPath(); cx.arc(0,0,r,0,Math.PI*2); cx.fill();
+
+  // patches
+  cx.fillStyle='#111';
+  for(const [px,py] of [[0,0],[0,-r*.52],[r*.5,-r*.24],[r*.5,r*.26],[-r*.5,r*.26],[-r*.5,-r*.24]]){
+    cx.beginPath(); cx.arc(px,py,r*0.20,0,Math.PI*2); cx.fill();
   }
 
-  // Head
-  ctx.fillStyle = '#f5c8a0';
-  ctx.beginPath(); ctx.arc(0, -scale*0.7, scale*0.16, 0, Math.PI*2); ctx.fill();
+  // shine
+  cx.fillStyle='rgba(255,255,255,0.55)';
+  cx.beginPath(); cx.ellipse(-r*0.28,-r*0.32,r*0.17,r*0.09,-0.6,0,Math.PI*2); cx.fill();
 
-  // Hair
-  ctx.fillStyle = '#3a1a00';
-  ctx.beginPath(); ctx.arc(0, -scale*0.78, scale*0.14, Math.PI, Math.PI*2); ctx.fill();
-
-  // Eyes
-  ctx.fillStyle = '#111';
-  ctx.beginPath(); ctx.arc(-scale*0.05, -scale*0.7, scale*0.03, 0, Math.PI*2); ctx.fill();
-  ctx.beginPath(); ctx.arc(scale*0.05, -scale*0.7, scale*0.03, 0, Math.PI*2); ctx.fill();
-
-  ctx.restore();
+  cx.restore();
 }
 
-function drawBall(bx, by, r, rot) {
-  ctx.save();
-  ctx.translate(bx, by);
-  if (rot !== undefined) ctx.rotate(rot);
+// ─── Aim drawing ──────────────────────────────────────────────────────────────
+function drawAim(){
+  if(!dragging && phase==='aim') return;
+  const sc=S();
+  if(!dragging) return;
 
-  // Ball shadow
-  ctx.fillStyle = 'rgba(0,0,0,0.3)';
-  ctx.beginPath(); ctx.ellipse(0, r*0.4, r*0.8, r*0.2, 0, 0, Math.PI*2); ctx.fill();
+  // dotted line from ball to current pointer
+  cx.save();
+  cx.strokeStyle='rgba(255,220,0,0.88)'; cx.lineWidth=2.5;
+  cx.setLineDash([9,6]); cx.lineDashOffset=-(Date.now()/40%15);
+  cx.beginPath(); cx.moveTo(sc.bx,sc.by); cx.lineTo(curSx,curSy); cx.stroke();
+  cx.setLineDash([]);
 
-  // Ball body
-  const grad = ctx.createRadialGradient(-r*0.3, -r*0.3, r*0.1, 0, 0, r);
-  grad.addColorStop(0, '#ffffff');
-  grad.addColorStop(0.4, '#eeeeee');
-  grad.addColorStop(1, '#cccccc');
-  ctx.fillStyle = grad;
-  ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI*2); ctx.fill();
+  // arrowhead at pointer
+  const ang=Math.atan2(curSy-sc.by, curSx-sc.bx);
+  cx.translate(curSx,curSy); cx.rotate(ang);
+  cx.fillStyle='rgba(255,220,0,0.9)';
+  cx.beginPath(); cx.moveTo(0,0); cx.lineTo(-13,-6); cx.lineTo(-13,6); cx.closePath(); cx.fill();
+  cx.restore();
 
-  // Black patches (simplified pentagons)
-  ctx.fillStyle = '#111';
-  const patches = [
-    [0, 0],
-    [0, -r*0.52],
-    [r*0.5, -r*0.25],
-    [r*0.5, r*0.25],
-    [-r*0.5, r*0.25],
-    [-r*0.5, -r*0.25],
-  ];
-  for (const [px, py] of patches) {
-    ctx.beginPath();
-    ctx.arc(px, py, r * 0.21, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // Shine
-  ctx.fillStyle = 'rgba(255,255,255,0.55)';
-  ctx.beginPath(); ctx.ellipse(-r*0.28, -r*0.32, r*0.18, r*0.1, -0.6, 0, Math.PI*2); ctx.fill();
-
-  ctx.restore();
+  // reticle in goal showing where ball will go
+  const {gl,gr,gt,gb}=sc;
+  const rx=gl+(aimTX+1)*0.5*(gr-gl);
+  const ry=gt+(1-aimTY)*(gb-gt);
+  cx.save();
+  cx.strokeStyle='rgba(255,60,60,0.92)'; cx.lineWidth=2;
+  const rs=14;
+  cx.beginPath(); cx.moveTo(rx-rs,ry); cx.lineTo(rx+rs,ry); cx.stroke();
+  cx.beginPath(); cx.moveTo(rx,ry-rs); cx.lineTo(rx,ry+rs); cx.stroke();
+  cx.beginPath(); cx.arc(rx,ry,rs*0.55,0,Math.PI*2); cx.stroke();
+  cx.restore();
 }
 
-function drawAimLine() {
-  if (!aimLine) return;
-  const sc = getScene();
-  ctx.save();
-  ctx.strokeStyle = 'rgba(255, 220, 0, 0.85)';
-  ctx.lineWidth = 2.5;
-  ctx.setLineDash([8, 6]);
-  ctx.lineDashOffset = (Date.now() / 40) % 14;
-  ctx.beginPath();
-  ctx.moveTo(aimLine.x1, aimLine.y1);
-  ctx.lineTo(aimLine.x2, aimLine.y2);
-  ctx.stroke();
-  ctx.setLineDash([]);
+// ─── Spin canvas ──────────────────────────────────────────────────────────────
+function drawSpinCanvas(){
+  const sw=SC.width, sh=SC.height;
+  const cx2=scx;
+  const ccx=sw/2, ccy=sh/2, r=sw*0.45;
 
-  // Arrowhead
-  const angle = Math.atan2(aimLine.y2 - aimLine.y1, aimLine.x2 - aimLine.x1);
-  ctx.fillStyle = 'rgba(255,220,0,0.9)';
-  ctx.translate(aimLine.x2, aimLine.y2);
-  ctx.rotate(angle);
-  ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-14,-6); ctx.lineTo(-14,6); ctx.closePath(); ctx.fill();
-  ctx.restore();
-}
+  cx2.clearRect(0,0,sw,sh);
 
-function drawAimReticle() {
-  if (!aimTarget) return;
-  const sc = getScene();
-  const { goalLeft, goalRight, goalTop, goalBot } = sc;
-  const rx = goalLeft + (aimTarget.gx + 1) * 0.5 * (goalRight - goalLeft);
-  const ry = goalTop + (1 - aimTarget.gy) * (goalBot - goalTop);
+  // ball
+  const g=cx2.createRadialGradient(ccx-r*.3,ccy-r*.3,r*.08,ccx,ccy,r);
+  g.addColorStop(0,'#fff'); g.addColorStop(.5,'#eee'); g.addColorStop(1,'#aaa');
+  cx2.fillStyle=g;
+  cx2.beginPath(); cx2.arc(ccx,ccy,r,0,Math.PI*2); cx2.fill();
 
-  ctx.save();
-  ctx.strokeStyle = 'rgba(255,80,80,0.9)';
-  ctx.lineWidth = 2;
-  const rs = 16;
-  ctx.beginPath(); ctx.moveTo(rx - rs, ry); ctx.lineTo(rx + rs, ry); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(rx, ry - rs); ctx.lineTo(rx, ry + rs); ctx.stroke();
-  ctx.beginPath(); ctx.arc(rx, ry, rs*0.6, 0, Math.PI*2); ctx.stroke();
-  ctx.restore();
-}
+  cx2.fillStyle='#222';
+  for(const [px,py] of [[ccx,ccy],[ccx,ccy-r*.44],[ccx+r*.4,ccy-r*.2],[ccx+r*.4,ccy+r*.2],[ccx-r*.4,ccy+r*.2],[ccx-r*.4,ccy-r*.2]])
+  { cx2.beginPath(); cx2.arc(px,py,r*0.18,0,Math.PI*2); cx2.fill(); }
 
-// ── Spin canvas ──
-function drawSpinCanvas() {
-  const sw = spinCanvas.width, sh = spinCanvas.height;
-  const cx = sw/2, cy = sh/2, r = sw*0.46;
+  // crosshair guide
+  cx2.strokeStyle='rgba(0,130,255,0.3)'; cx2.lineWidth=1;
+  cx2.beginPath(); cx2.moveTo(ccx,ccy-r); cx2.lineTo(ccx,ccy+r); cx2.stroke();
+  cx2.beginPath(); cx2.moveTo(ccx-r,ccy); cx2.lineTo(ccx+r,ccy); cx2.stroke();
 
-  spinCtx.clearRect(0, 0, sw, sh);
+  // labels
+  cx2.fillStyle='rgba(30,140,255,0.9)';
+  cx2.font=`bold ${sw*0.09}px Arial`; cx2.textAlign='center';
+  cx2.fillText('TOP',ccx,ccy-r*0.58);
+  cx2.fillText('BOT',ccx,ccy+r*0.72);
+  cx2.textAlign='right'; cx2.fillText('L',ccx-r*0.58,ccy+r*0.06);
+  cx2.textAlign='left';  cx2.fillText('R',ccx+r*0.58,ccy+r*0.06);
 
-  // Ball background
-  const grad = spinCtx.createRadialGradient(cx-r*0.3, cy-r*0.3, r*0.1, cx, cy, r);
-  grad.addColorStop(0, '#ffffff');
-  grad.addColorStop(0.5, '#eeeeee');
-  grad.addColorStop(1, '#aaaaaa');
-  spinCtx.fillStyle = grad;
-  spinCtx.beginPath(); spinCtx.arc(cx, cy, r, 0, Math.PI*2); spinCtx.fill();
-
-  // Patches
-  spinCtx.fillStyle = '#222';
-  const patches = [[cx, cy],[cx, cy-r*0.42],[cx+r*0.38,cy-r*0.2],[cx+r*0.38,cy+r*0.2],[cx-r*0.38,cy+r*0.2],[cx-r*0.38,cy-r*0.2]];
-  for (const [px, py] of patches) {
-    spinCtx.beginPath(); spinCtx.arc(px, py, r*0.19, 0, Math.PI*2); spinCtx.fill();
-  }
-
-  // Crosshair guide
-  spinCtx.strokeStyle = 'rgba(0,150,255,0.35)';
-  spinCtx.lineWidth = 1;
-  spinCtx.beginPath(); spinCtx.moveTo(cx, cy-r); spinCtx.lineTo(cx, cy+r); spinCtx.stroke();
-  spinCtx.beginPath(); spinCtx.moveTo(cx-r, cy); spinCtx.lineTo(cx+r, cy); spinCtx.stroke();
-
-  // Spin labels
-  spinCtx.fillStyle = 'rgba(50,150,255,0.85)';
-  spinCtx.font = `bold ${sw*0.1}px Arial`;
-  spinCtx.textAlign = 'center';
-  spinCtx.fillText('TOP', cx, cy - r*0.62);
-  spinCtx.fillText('BOT', cx, cy + r*0.75);
-  spinCtx.textAlign = 'right';
-  spinCtx.fillText('L', cx - r*0.6, cy + r*0.08);
-  spinCtx.textAlign = 'left';
-  spinCtx.fillText('R', cx + r*0.6, cy + r*0.08);
-
-  // Chosen dot
-  if (spinChosen) {
-    const dx = cx + (spinX - 0.5) * 2 * r * 0.85;
-    const dy = cy + (spinY - 0.5) * 2 * r * 0.85;
-    spinCtx.fillStyle = 'rgba(255,50,50,0.9)';
-    spinCtx.beginPath(); spinCtx.arc(dx, dy, 7, 0, Math.PI*2); spinCtx.fill();
-    spinCtx.strokeStyle = '#fff';
-    spinCtx.lineWidth = 2;
-    spinCtx.stroke();
+  // chosen dot
+  if(spinChosen){
+    const dx=ccx+(spinX-0.5)*2*r*0.82;
+    const dy=ccy+(spinY-0.5)*2*r*0.82;
+    cx2.fillStyle='rgba(255,40,40,0.95)';
+    cx2.beginPath(); cx2.arc(dx,dy,7,0,Math.PI*2); cx2.fill();
+    cx2.strokeStyle='#fff'; cx2.lineWidth=2; cx2.stroke();
   }
 }
 
-// ── Physics ──
-const GRAVITY = -9.8;
-const DRAG_K = 0.008;
-const MAGNUS_K = 0.12;
-const DT = 0.016;
-const FIELD_DIST = 11; // metres (penalty spot)
+// ─── Physics ──────────────────────────────────────────────────────────────────
+const GRAV   = -9.81;
+const DRAG_K = 0.006;
+const MAG_K  = 0.10;
+const DT     = 0.016;
 
-let physBall = null; // { x, y, z, vx, vy, vz, wx, wy, wz, t, done }
-// coordinate: x = right, y = up, z = depth (toward goal, z=0 at ball, z=11 at goal)
+function initFlight(){
+  const spd = 12 + power * 0.28;   // 12–40 m/s based on power
 
-function startFlight() {
-  const sc = getScene();
-  if (!aimTarget) aimTarget = { gx: 0, gy: 0.5 };
+  // Where we're aiming in world-metres at the goal line
+  const tgX = aimTX * 3.0;            // ±3m (within ±3.66m post)
+  const tgY = 0.3 + aimTY * 1.9;      // 0.3m (low) to 2.2m (high)
 
-  // Convert aim to goal coords in metres
-  // Goal width ~7.32m, height ~2.44m
-  const GOAL_W = 7.32;
-  const GOAL_H = 2.44;
-  const targetX = aimTarget.gx * GOAL_W * 0.45; // -3.3..3.3m
-  const targetY = aimTarget.gy * GOAL_H;         // 0..2.44m
-  const targetZ = FIELD_DIST;
+  // Time to cross the pitch at this speed
+  const ft = PDIST / spd;
 
-  const spd = 15 + power * 0.25; // 15–40 m/s
-  const flightTime = FIELD_DIST / spd * 1.2;
+  // vz is just speed (no backward lean)
+  const vz = spd;
 
-  // Base velocity toward target
-  const vx = targetX / flightTime;
-  const vy = (targetY - GRAVITY * 0.5 * flightTime * flightTime) / flightTime;
-  const vz = spd * 0.98;
+  // vx chosen so we arrive at tgX
+  const vx = tgX / ft;
 
-  // Spin from spin canvas (spinX/Y in 0..1)
-  const sx = (spinX - 0.5) * 2; // -1..1 (right curl positive)
-  const sy = (spinY - 0.5) * -2; // -1..1 (topspin positive when sy<0.5)
+  // vy so ball arrives at tgY given gravity
+  // tgY = vy*ft + 0.5*GRAV*ft²  (starting at y≈0)
+  const vy = (tgY - 0.5 * GRAV * ft * ft) / ft;
 
-  physBall = {
-    x: 0, y: 0.3, z: 0,
+  // Spin → angular velocity
+  // spinX: 0=hard left curl, 0.5=no curl, 1=hard right curl
+  // spinY: 0=topspin, 0.5=none, 1=backspin
+  const curlAmt  = (spinX - 0.5) * 2;     // -1..1
+  const spinAmt  = (0.5 - spinY) * 2;     // -1..1 (+1 = topspin)
+
+  ball = {
+    x:0, y:0, z:0,
     vx, vy, vz,
-    wx: sy * 8,  // topspin/backspin around x-axis
-    wy: -sx * 8, // curl around y-axis
+    wx: spinAmt * 10,   // topspin axis (around x)
+    wy: -curlAmt * 10,  // curl axis (around y)
     wz: 0,
-    t: 0, done: false, reachedGoal: false
   };
 
-  // Keeper dive: dive toward ball target side
-  keeperDiveDir = aimTarget.gx > 0.15 ? 1 : aimTarget.gx < -0.15 ? -1 : (Math.random() > 0.5 ? 1 : -1);
-  // Occasionally make keeper dive wrong way (0.3 probability)
-  if (Math.random() < 0.3) keeperDiveDir = -keeperDiveDir;
-  keeperDiveT = 0;
-  ballTrail = [];
-}
+  // Expected flight steps
+  flightLen = Math.round(ft / DT);
+  stepCount = 0;
+  trail = [];
 
-function stepPhysics() {
-  if (!physBall || physBall.done) return;
-  const pb = physBall;
-
-  const speed = Math.sqrt(pb.vx*pb.vx + pb.vy*pb.vy + pb.vz*pb.vz);
-  const drag = DRAG_K * speed;
-
-  // Magnus: omega × velocity
-  // omega = (wx, wy, wz), v = (vx, vy, vz)
-  // F = MAGNUS_K * (omega × v)
-  const magX = MAGNUS_K * (pb.wy * pb.vz - pb.wz * pb.vy);
-  const magY = MAGNUS_K * (pb.wz * pb.vx - pb.wx * pb.vz);
-  const magZ = MAGNUS_K * (pb.wx * pb.vy - pb.wy * pb.vx);
-
-  pb.vx += (-drag * pb.vx + magX) * DT;
-  pb.vy += (GRAVITY + (-drag * pb.vy + magY)) * DT;
-  pb.vz += (-drag * pb.vz + magZ) * DT;
-
-  pb.x += pb.vx * DT;
-  pb.y += pb.vy * DT;
-  pb.z += pb.vz * DT;
-  pb.t += DT;
-
-  ballTrail.push({ x: pb.x, y: pb.y, z: pb.z });
-  if (ballTrail.length > 30) ballTrail.shift();
-
-  // Check if reached goal plane
-  if (pb.z >= FIELD_DIST && !pb.reachedGoal) {
-    pb.reachedGoal = true;
-    const GOAL_W_HALF = 3.66;
-    const GOAL_H = 2.44;
-    const KEEPER_W = 1.0; // effective keeper reach
-
-    const inGoal = Math.abs(pb.x) < GOAL_W_HALF && pb.y > 0 && pb.y < GOAL_H;
-    if (!inGoal) {
-      goalDecision = 'miss';
-    } else {
-      // Check keeper
-      const keeperX = keeperDiveDir * GOAL_W_HALF * 0.6 * Math.min(keeperDiveT * 1.5, 1);
-      const keeperY = 1.0;
-      const dx = Math.abs(pb.x - keeperX);
-      const dy = Math.abs(pb.y - keeperY);
-      const reach = KEEPER_W * (1 + Math.min(keeperDiveT, 0.5));
-      if (dx < reach && dy < reach * 1.4) {
-        goalDecision = 'saved';
-      } else {
-        goalDecision = 'goal';
-      }
-    }
-    pb.done = true;
-    setTimeout(showResult, 600);
-  }
-
-  if (pb.y < -0.5 || pb.t > 3) {
-    pb.done = true;
-    if (!goalDecision) goalDecision = 'miss';
-    setTimeout(showResult, 400);
-  }
-}
-
-function showResult() {
-  const el = document.getElementById('result-overlay');
-  const txt = document.getElementById('result-text');
-  el.style.display = 'flex';
-  if (goalDecision === 'goal') {
-    txt.textContent = 'GOAL!';
-    txt.style.color = '#00ff44';
-  } else if (goalDecision === 'saved') {
-    txt.textContent = 'SAVED!';
-    txt.style.color = '#ff8800';
+  // Keeper dives toward aimed side (gently biased)
+  const rand = Math.random();
+  if(Math.abs(aimTX) < 0.25){
+    // aimed centre: random dive
+    keepDir = rand < 0.5 ? -1 : 1;
   } else {
-    txt.textContent = 'MISS!';
-    txt.style.color = '#ff2222';
+    // dive toward the aimed side most of the time, miss 28% of time
+    const aimed = aimTX > 0 ? 1 : -1;
+    keepDir = rand < 0.28 ? -aimed : aimed;
   }
-  phase = 'result';
+  keepProg = 0;
 }
 
-// ── Project 3D ball to screen ──
-function project3D(pb) {
-  const sc = getScene();
-  const { VP, BALL_X, BALL_Y, goalLeft, goalRight, goalTop, goalBot } = sc;
+function stepPhysics(){
+  if(!ball) return;
+  const b = ball;
 
-  // Map z: 0 (ball pos) → BALL_Y; FIELD_DIST → goalBot
-  const t = pb.z / FIELD_DIST;
-  const GOAL_W = 7.32;
+  const spd = Math.sqrt(b.vx*b.vx + b.vy*b.vy + b.vz*b.vz);
+  const drag = DRAG_K * spd;
 
-  // Screen Y: as ball rises in world (pb.y), it goes up on screen
-  const screenZ_y = BALL_Y + (VP.y - BALL_Y) * t;
-  const GOAL_H = 2.44;
-  const pxPerMeter_y = (goalBot - goalTop) / GOAL_H;
-  const baseY = screenZ_y - pb.y * pxPerMeter_y * (1 - t * 0.6);
+  // Magnus: ω × v
+  const Fx = MAG_K * (b.wy*b.vz - b.wz*b.vy);
+  const Fy = MAG_K * (b.wz*b.vx - b.wx*b.vz);
+  const Fz = MAG_K * (b.wx*b.vy - b.wy*b.vx);
 
-  // Screen X
-  const screenZ_x = BALL_X + (VP.x - BALL_X) * t;
-  const goalPxW = goalRight - goalLeft;
-  const pxPerMeter_x = goalPxW / GOAL_W;
-  const screenX = screenZ_x + pb.x * pxPerMeter_x * (1 - t * 0.5);
+  b.vx += (-drag*b.vx + Fx) * DT;
+  b.vy += (GRAV + (-drag*b.vy + Fy)) * DT;
+  b.vz += (-drag*b.vz + Fz) * DT;
 
-  // Scale ball with depth
-  const ballR_screen = sc.BALL_R * (1 - t * 0.65);
+  b.x += b.vx * DT;
+  b.y += b.vy * DT;
+  b.z += b.vz * DT;
 
-  return { sx: screenX, sy: baseY, r: Math.max(ballR_screen, 3) };
+  stepCount++;
+  // Keeper progress: ramps from 0→1 over expected flight
+  keepProg = Math.min(stepCount / flightLen, 1);
+
+  trail.push({x:b.x, y:b.y, z:b.z});
+  if(trail.length > 28) trail.shift();
+
+  // Hit ground
+  if(b.y < 0 && b.z < PDIST){
+    b.y = 0;
+    if(!outcome){ outcome='miss'; scheduleResult(); }
+    return;
+  }
+
+  // Reached goal line
+  if(b.z >= PDIST){
+    evaluateShot(b.x, b.y);
+  }
 }
 
-// ── Main draw loop ──
-let ballRot = 0;
-function draw() {
-  ctx.clearRect(0, 0, W, H);
+function evaluateShot(fx, fy){
+  // Post half-width 3.66, crossbar 2.44
+  const inGoal = Math.abs(fx) < 3.66 && fy > 0.05 && fy < 2.44;
+
+  if(!inGoal){
+    outcome = 'miss';
+  } else {
+    // Keeper final world-x position
+    const keepMaxX = 3.0 * keepDir;   // max dive = 3m to that side
+    const keepCX   = keepMaxX * keepProg; // where keeper ended up
+    const keepCY   = 1.15;            // keeper body centre height
+
+    // Keeper reach radius (metres)
+    const reach = 1.05;
+    const inHands = Math.abs(fx - keepCX) < reach && Math.abs(fy - keepCY) < reach * 1.3;
+    outcome = inHands ? 'saved' : 'goal';
+  }
+
+  ball = null;
+  scheduleResult();
+}
+
+function scheduleResult(){
+  setTimeout(showResult, 700);
+}
+
+function showResult(){
+  const el = document.getElementById('result');
+  const txt = document.getElementById('resultTxt');
+  el.style.display = 'flex';
+  if(outcome==='goal'){ txt.textContent='GOAL!'; txt.style.color='#00ff55'; }
+  else if(outcome==='saved'){ txt.textContent='SAVED!'; txt.style.color='#ff8800'; }
+  else { txt.textContent='MISS!'; txt.style.color='#ff2222'; }
+  phase='result';
+}
+
+// ─── Main loop ────────────────────────────────────────────────────────────────
+let lastStep = 0;
+function loop(ts){
+  if(phase==='flight'){
+    if(ts - lastStep >= 16){
+      stepPhysics();
+      lastStep = ts;
+    }
+  }
+
+  cx.clearRect(0,0,W,H);
   drawSky();
   drawPitch();
 
-  const sc = getScene();
-
-  // Draw trail
-  if (ballTrail.length > 1) {
-    for (let i = 1; i < ballTrail.length; i++) {
-      const p = project3D(ballTrail[i]);
-      const alpha = i / ballTrail.length * 0.5;
-      ctx.fillStyle = `rgba(255,255,255,${alpha})`;
-      ctx.beginPath(); ctx.arc(p.sx, p.sy, p.r * 0.4, 0, Math.PI*2); ctx.fill();
-    }
+  // trail
+  for(let i=1;i<trail.length;i++){
+    const p=proj(trail[i].x, trail[i].y, trail[i].z);
+    const a=(i/trail.length)*0.45;
+    cx.fillStyle=`rgba(255,255,255,${a})`;
+    cx.beginPath(); cx.arc(p.sx,p.sy,p.r*0.35,0,Math.PI*2); cx.fill();
   }
 
   drawGoal();
-  drawAimReticle();
+  drawAim();
 
-  // Draw keeper
-  if (phase === 'flight' || phase === 'result') {
-    drawKeeper(keeperDiveT, keeperDiveDir);
-  } else {
-    drawKeeper(0, 0);
+  if(phase==='flight'||phase==='result') drawKeeper();
+  else drawKeeper(); // standing still when keepProg=0
+
+  if(phase==='flight' && ball){
+    const p=proj(ball.x, ball.y, ball.z);
+    rot += 0.10;
+    drawBall(p.sx, p.sy, p.r, rot);
+  } else if(phase!=='result'){
+    const sc=S();
+    drawBall(sc.bx, sc.by, sc.br, rot);
   }
 
-  // Draw ball
-  if (phase === 'flight' && physBall) {
-    const p = project3D(physBall);
-    drawBall(p.sx, p.sy, p.r, ballRot);
-    ballRot += 0.12;
-  } else if (phase !== 'result') {
-    drawBall(sc.BALL_X, sc.BALL_Y, sc.BALL_R, ballRot);
-  }
-
-  if (phase === 'aim') drawAimLine();
-}
-
-// ── Animation loop ──
-let lastTime = 0;
-function loop(ts) {
-  if (phase === 'flight') {
-    const elapsed = ts - lastTime;
-    if (elapsed >= 16) {
-      stepPhysics();
-      keeperDiveT += 0.035;
-      lastTime = ts;
-    }
-  }
-  draw();
-  animFrame = requestAnimationFrame(loop);
+  requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
 
-// ── Phase transitions ──
-function toPhase(p) {
-  phase = p;
-  document.getElementById('instruction').style.display = 'none';
-  document.getElementById('power-container').style.display = 'none';
-  document.getElementById('hold-btn').style.display = 'none';
-  document.getElementById('spin-container').style.display = 'none';
+// ─── Input helpers ────────────────────────────────────────────────────────────
+function evPos(e){
+  const r=C.getBoundingClientRect();
+  const src=e.touches ? e.touches[0] : e;
+  return {x: src.clientX-r.left, y: src.clientY-r.top};
+}
 
-  if (p === 'aim') {
-    document.getElementById('instruction').style.display = 'block';
-    document.getElementById('instruction').textContent = 'Drag from ball toward goal to aim';
-  } else if (p === 'power') {
-    document.getElementById('instruction').style.display = 'block';
-    document.getElementById('instruction').textContent = 'Hold the button to build power';
-    document.getElementById('power-container').style.display = 'flex';
-    document.getElementById('hold-btn').style.display = 'block';
-  } else if (p === 'spin') {
-    document.getElementById('instruction').style.display = 'block';
-    document.getElementById('instruction').textContent = 'Tap ball for spin direction, then SHOOT';
-    document.getElementById('spin-container').style.display = 'flex';
-    spinChosen = false; spinX = 0.5; spinY = 0.5;
-    drawSpinCanvas();
-  } else if (p === 'flight') {
-    startFlight();
+function aimFromDrag(ex, ey){
+  const sc=S();
+  const dx=ex-sc.bx, dy=ey-sc.by;
+  // Horizontal aim: left/right drag → left/right of goal
+  // Map drag distance to goal width (±1 = post edge)
+  aimTX = Math.max(-1.2, Math.min(1.2, dx / ((sc.gr-sc.gl)*0.45)));
+  // Vertical aim: upward drag → higher shot
+  // Full drag to goal top → max height
+  const maxUp = sc.by - sc.gt;
+  aimTY = Math.max(0, Math.min(1, (sc.by - ey) / (maxUp * 0.7)));
+}
+
+// ─── AIM phase ────────────────────────────────────────────────────────────────
+C.addEventListener('mousedown', e=>onDown(evPos(e)));
+C.addEventListener('mousemove', e=>onMove(evPos(e)));
+C.addEventListener('mouseup',   e=>onUp(evPos(e)));
+C.addEventListener('touchstart', e=>{e.preventDefault();onDown(evPos(e));},{passive:false});
+C.addEventListener('touchmove',  e=>{e.preventDefault();onMove(evPos(e));},{passive:false});
+C.addEventListener('touchend',   e=>{e.preventDefault();onUp(evPos(e));},  {passive:false});
+
+function onDown(p){
+  if(phase!=='aim') return;
+  const sc=S();
+  if(Math.hypot(p.x-sc.bx, p.y-sc.by) < sc.br*4){
+    dragging=true; dragSx=p.x; dragSy=p.y; curSx=p.x; curSy=p.y;
   }
 }
-
-function resetGame() {
-  phase = 'aim';
-  aimLine = null; aimTarget = null;
-  power = 0; spinChosen = false;
-  spinX = 0.5; spinY = 0.5;
-  physBall = null; goalDecision = null;
-  keeperDiveT = 0; ballTrail = [];
-  clearInterval(powerInterval); powerInterval = null;
-  document.getElementById('power-bar').style.width = '0%';
-  document.getElementById('power-pct').textContent = '0%';
-  document.getElementById('result-overlay').style.display = 'none';
-  toPhase('aim');
+function onMove(p){
+  if(!dragging||phase!=='aim') return;
+  curSx=p.x; curSy=p.y;
+  aimFromDrag(p.x, p.y);
+}
+function onUp(p){
+  if(!dragging||phase!=='aim') return;
+  dragging=false;
+  toPhase('power');
 }
 
-// ── Input: AIM phase ──
-function getPos(e) {
-  const r = canvas.getBoundingClientRect();
-  if (e.touches) {
-    return { x: e.touches[0].clientX - r.left, y: e.touches[0].clientY - r.top };
-  }
-  return { x: e.clientX - r.left, y: e.clientY - r.top };
+// ─── POWER phase ──────────────────────────────────────────────────────────────
+const holdBtn=document.getElementById('holdBtn');
+
+function startHold(){
+  if(holding) return;
+  holding=true;
+  powerDir=1;
+  holdBtn.textContent='RELEASE!';
+  holdBtn.style.background='linear-gradient(135deg,#cc2200,#880000)';
+  powerIv=setInterval(()=>{
+    power+=powerDir*2.2;
+    if(power>=100){power=100;powerDir=-1;}
+    if(power<=0){power=0;powerDir=1;}
+    document.getElementById('powerFill').style.width=power+'%';
+    document.getElementById('powerPct').textContent=Math.round(power)+'%';
+  },16);
 }
-
-function screenToGoalTarget(ex, ey) {
-  const sc = getScene();
-  const { VP, BALL_X, BALL_Y, goalLeft, goalRight, goalTop, goalBot } = sc;
-  // Extrapolate aim line to goal level
-  const dx = ex - BALL_X, dy = ey - BALL_Y;
-  if (Math.abs(dy) < 1) return null;
-  // Find where line hits goal row (goalBot y level in screen)
-  const t = (goalBot - BALL_Y) / dy;
-  const gx_screen = BALL_X + dx * t;
-  const gy_screen = ey + (BALL_Y - ey) * Math.abs(t); // simplified
-
-  // Goal height from drag: upward drag → higher shot
-  const dragFraction = Math.max(0, Math.min(1, (BALL_Y - ey) / (BALL_Y - goalTop)));
-  const gx = ((gx_screen - goalLeft) / (goalRight - goalLeft)) * 2 - 1;
-  return { gx: Math.max(-1.3, Math.min(1.3, gx)), gy: Math.max(0, Math.min(1, dragFraction)) };
-}
-
-canvas.addEventListener('mousedown', onDown);
-canvas.addEventListener('mousemove', onMove);
-canvas.addEventListener('mouseup', onUp);
-canvas.addEventListener('touchstart', e => { e.preventDefault(); onDown(e); }, { passive: false });
-canvas.addEventListener('touchmove', e => { e.preventDefault(); onMove(e); }, { passive: false });
-canvas.addEventListener('touchend', e => { e.preventDefault(); onUp(e); }, { passive: false });
-
-function onDown(e) {
-  if (phase !== 'aim') return;
-  const pos = getPos(e);
-  const sc = getScene();
-  const dist = Math.hypot(pos.x - sc.BALL_X, pos.y - sc.BALL_Y);
-  if (dist < sc.BALL_R * 3.5) {
-    isDragging = true;
-    dragStart = { x: sc.BALL_X, y: sc.BALL_Y };
-    aimLine = { x1: sc.BALL_X, y1: sc.BALL_Y, x2: pos.x, y2: pos.y };
-  }
-}
-
-function onMove(e) {
-  if (!isDragging || phase !== 'aim') return;
-  const pos = getPos(e);
-  aimLine = { x1: dragStart.x, y1: dragStart.y, x2: pos.x, y2: pos.y };
-  aimTarget = screenToGoalTarget(pos.x, pos.y);
-}
-
-function onUp(e) {
-  if (!isDragging || phase !== 'aim') return;
-  isDragging = false;
-  if (aimTarget) {
-    toPhase('power');
-  } else {
-    aimLine = null;
-  }
-}
-
-// ── Input: POWER phase ──
-const holdBtn = document.getElementById('hold-btn');
-let powerHolding = false;
-let powerDir2 = 1;
-
-function startPower() {
-  if (powerHolding) return;
-  powerHolding = true;
-  holdBtn.textContent = 'RELEASE!';
-  holdBtn.style.background = 'linear-gradient(135deg, #cc3300, #881100)';
-  powerInterval = setInterval(() => {
-    power += powerDir2 * 2.5;
-    if (power >= 100) { power = 100; powerDir2 = -1; }
-    if (power <= 0) { power = 0; powerDir2 = 1; }
-    document.getElementById('power-bar').style.width = power + '%';
-    document.getElementById('power-pct').textContent = Math.round(power) + '%';
-  }, 20);
-}
-
-function stopPower() {
-  if (!powerHolding) return;
-  powerHolding = false;
-  clearInterval(powerInterval);
-  holdBtn.textContent = 'HOLD FOR POWER';
-  holdBtn.style.background = 'linear-gradient(135deg, #1a6ed8, #0d4aab)';
+function stopHold(){
+  if(!holding) return;
+  holding=false;
+  clearInterval(powerIv); powerIv=null;
+  holdBtn.textContent='HOLD FOR POWER';
+  holdBtn.style.background='linear-gradient(135deg,#1a6ed8,#0d4aab)';
   toPhase('spin');
 }
 
-holdBtn.addEventListener('mousedown', startPower);
-holdBtn.addEventListener('mouseup', stopPower);
-holdBtn.addEventListener('mouseleave', stopPower);
-holdBtn.addEventListener('touchstart', e => { e.preventDefault(); startPower(); }, { passive: false });
-holdBtn.addEventListener('touchend', e => { e.preventDefault(); stopPower(); }, { passive: false });
+holdBtn.addEventListener('mousedown', startHold);
+holdBtn.addEventListener('mouseup', stopHold);
+holdBtn.addEventListener('mouseleave', stopHold);
+holdBtn.addEventListener('touchstart', e=>{e.preventDefault();startHold();},{passive:false});
+holdBtn.addEventListener('touchend',   e=>{e.preventDefault();stopHold();}, {passive:false});
 
-// ── Input: SPIN phase ──
-function getSpinPos(e) {
-  const r = spinCanvas.getBoundingClientRect();
-  if (e.touches) return { x: e.touches[0].clientX - r.left, y: e.touches[0].clientY - r.top };
-  return { x: e.clientX - r.left, y: e.clientY - r.top };
+// ─── SPIN phase ───────────────────────────────────────────────────────────────
+function onSpinTap(e){
+  const r=SC.getBoundingClientRect();
+  const src=e.touches?e.touches[0]:e;
+  const sx=src.clientX-r.left, sy=src.clientY-r.top;
+  const cx2=SC.width/2, cy2=SC.height/2, sr=SC.width*0.45;
+  if(Math.hypot(sx-cx2,sy-cy2)<sr){
+    spinX=sx/SC.width; spinY=sy/SC.height;
+    spinChosen=true; drawSpinCanvas();
+  }
 }
+SC.addEventListener('mousedown', onSpinTap);
+SC.addEventListener('touchstart', e=>{e.preventDefault();onSpinTap(e);},{passive:false});
 
-spinCanvas.addEventListener('mousedown', onSpinTap);
-spinCanvas.addEventListener('touchstart', e => { e.preventDefault(); onSpinTap(e); }, { passive: false });
+document.getElementById('shootBtn').addEventListener('click', ()=>{if(phase==='spin') toPhase('flight');});
+document.getElementById('shootBtn').addEventListener('touchstart', e=>{e.preventDefault();if(phase==='spin')toPhase('flight');},{passive:false});
 
-function onSpinTap(e) {
-  const pos = getSpinPos(e);
-  const sw = spinCanvas.width, sh = spinCanvas.height;
-  const cx = sw/2, cy = sh/2, r = sw*0.46;
-  const dx = pos.x - cx, dy = pos.y - cy;
-  if (Math.sqrt(dx*dx + dy*dy) < r) {
-    spinX = (pos.x / sw);
-    spinY = (pos.y / sh);
-    spinChosen = true;
+// ─── Result: reset ────────────────────────────────────────────────────────────
+document.getElementById('result').addEventListener('click', reset);
+document.getElementById('result').addEventListener('touchstart', e=>{e.preventDefault();reset();},{passive:false});
+
+// ─── Phase manager ────────────────────────────────────────────────────────────
+function hide(...ids){ ids.forEach(id=>{ const el=document.getElementById(id); el.style.display='none'; }); }
+function show(id, flex=false){ document.getElementById(id).style.display = flex?'flex':'block'; }
+
+function toPhase(p){
+  phase=p;
+  hide('msg','powerWrap','holdBtn','spinWrap');
+  if(p==='aim'){
+    show('msg');
+    document.getElementById('msg').textContent='Drag from the ball toward the goal to aim';
+  } else if(p==='power'){
+    show('msg');
+    document.getElementById('msg').textContent='Hold the button — release to lock power';
+    show('powerWrap',true);
+    show('holdBtn');
+  } else if(p==='spin'){
+    show('msg');
+    document.getElementById('msg').textContent='Tap ball for spin, then shoot';
+    show('spinWrap',true);
+    spinChosen=false; spinX=0.5; spinY=0.5;
     drawSpinCanvas();
+  } else if(p==='flight'){
+    initFlight();
+    lastStep=0;
   }
 }
 
-document.getElementById('shoot-btn').addEventListener('click', () => {
-  if (phase === 'spin') toPhase('flight');
-});
-document.getElementById('shoot-btn').addEventListener('touchstart', e => {
-  e.preventDefault();
-  if (phase === 'spin') toPhase('flight');
-}, { passive: false });
+function reset(){
+  power=0; powerDir=1; holding=false; clearInterval(powerIv); powerIv=null;
+  spinX=0.5; spinY=0.5; spinChosen=false;
+  aimTX=0; aimTY=0.5;
+  ball=null; trail=[]; outcome=null;
+  keepDir=0; keepProg=0; flightLen=0; stepCount=0;
+  dragging=false; rot=0;
+  document.getElementById('powerFill').style.width='0%';
+  document.getElementById('powerPct').textContent='0%';
+  document.getElementById('result').style.display='none';
+  toPhase('aim');
+}
 
-// ── Result: tap to reset ──
-document.getElementById('result-overlay').addEventListener('click', resetGame);
-document.getElementById('result-overlay').addEventListener('touchstart', e => { e.preventDefault(); resetGame(); }, { passive: false });
-
-// ── Init ──
+// ─── Start ────────────────────────────────────────────────────────────────────
 toPhase('aim');
 </script>
 </body>
