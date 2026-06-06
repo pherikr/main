@@ -1,0 +1,244 @@
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;500;600;700&display=swap');
+@import 'animate.css';
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0a0a0f;
+  --surface: #13131f;
+  --surface2: #1c1c2e;
+  --border: rgba(255,255,255,0.08);
+  --text: #e8e8f0;
+  --muted: #6b6b8a;
+  --accent: #6366f1;
+  --accent2: #8b5cf6;
+  --green: #22c55e;
+  --red: #ef4444;
+  --yellow: #facc15;
+  --gold: #ffd700;
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Barlow', sans-serif; font-size: 15px; -webkit-font-smoothing: antialiased; }
+#root { min-height: 100vh; display: flex; flex-direction: column; }
+#app { flex: 1; max-width: 680px; margin: 0 auto; width: 100%; padding: 0 0 6rem; }
+
+.screen { min-height: 100vh; padding: 2rem 1.25rem; }
+
+.badge { display: inline-block; font-family: 'Bebas Neue', sans-serif; font-size: 0.75rem; letter-spacing: 0.15em; color: var(--accent); border: 1px solid var(--accent); padding: 0.2rem 0.6rem; border-radius: 4px; margin-bottom: 0.75rem; }
+
+/* CREATION */
+.creation-header { text-align: center; padding-bottom: 2rem; border-bottom: 1px solid var(--border); margin-bottom: 2rem; }
+.creation-header h1 { font-family: 'Bebas Neue', sans-serif; font-size: 3rem; letter-spacing: 0.05em; color: #fff; }
+.creation-header .subtitle { color: var(--muted); margin-top: 0.25rem; font-size: 0.9rem; }
+.form-group { margin-bottom: 2rem; }
+.form-group > label { display: block; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; margin-bottom: 0.75rem; }
+input[type="text"] { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-family: 'Barlow', sans-serif; font-size: 1rem; padding: 0.75rem 1rem; outline: none; transition: border-color 0.2s; }
+input[type="text"]:focus { border-color: var(--accent); }
+input[type="text"]::placeholder { color: var(--muted); }
+.flag-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.5rem; }
+.flag-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.5rem 0.25rem; cursor: pointer; color: var(--text); font-size: 0.7rem; text-align: center; transition: border-color 0.2s, background 0.2s; display: flex; flex-direction: column; align-items: center; gap: 0.2rem; }
+.flag-btn .flag { font-size: 1.5rem; }
+.flag-btn .nation-name { font-size: 0.6rem; color: var(--muted); }
+.flag-btn:hover { border-color: var(--accent); }
+.flag-btn.selected { border-color: var(--accent); background: rgba(99,102,241,0.15); }
+.button-row { display: flex; gap: 0.5rem; }
+.choice-btn { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.75rem; color: var(--text); font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; letter-spacing: 0.05em; cursor: pointer; transition: border-color 0.2s, background 0.2s; }
+.choice-btn:hover { border-color: var(--accent); }
+.choice-btn.selected { border-color: var(--accent); background: rgba(99,102,241,0.15); }
+.profile-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
+.profile-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 0.75rem; cursor: pointer; color: var(--text); text-align: center; transition: border-color 0.2s, background 0.2s; }
+.profile-btn:hover { border-color: var(--accent2); }
+.profile-btn.selected { border-color: var(--accent2); background: rgba(139,92,246,0.15); }
+.profile-icon { font-size: 1.8rem; margin-bottom: 0.4rem; }
+.profile-name { font-family: 'Bebas Neue', sans-serif; font-size: 1rem; letter-spacing: 0.04em; }
+.profile-desc { font-size: 0.7rem; color: var(--muted); margin-top: 0.3rem; line-height: 1.4; }
+.weapon-grid { display: flex; flex-direction: column; gap: 0.5rem; }
+.weapon-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.75rem 1rem; cursor: pointer; color: var(--text); text-align: left; display: flex; align-items: center; gap: 0.75rem; transition: border-color 0.2s, background 0.2s; }
+.weapon-btn:hover { border-color: var(--yellow); }
+.weapon-btn.selected { border-color: var(--yellow); background: rgba(250,204,21,0.08); }
+.weapon-icon { font-size: 1.4rem; flex-shrink: 0; }
+.weapon-name { font-weight: 600; font-size: 0.9rem; }
+.weapon-desc { font-size: 0.75rem; color: var(--muted); margin-top: 0.15rem; }
+.discover-btn { border-style: dashed; }
+.cta-btn { display: block; width: 100%; background: var(--accent); color: #fff; border: none; border-radius: var(--radius); padding: 1rem; font-family: 'Bebas Neue', sans-serif; font-size: 1.2rem; letter-spacing: 0.1em; cursor: pointer; margin-top: 1.5rem; transition: background 0.2s, transform 0.1s; }
+.cta-btn:hover { background: var(--accent2); transform: translateY(-1px); }
+.cta-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+
+/* STAT CARD */
+.stat-card-screen .creation-header { text-align: left; padding-bottom: 1rem; margin-bottom: 1.5rem; }
+.card-container { display: grid; grid-template-columns: 160px 1fr; gap: 1.5rem; align-items: start; }
+.fifa-card { background: linear-gradient(145deg, #1a1a2e, #16213e); border: 1px solid rgba(99,102,241,0.4); border-radius: 16px; padding: 1rem; text-align: center; position: relative; box-shadow: 0 0 30px rgba(99,102,241,0.2); }
+.card-top { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; }
+.card-overall { font-family: 'Bebas Neue', sans-serif; font-size: 3rem; color: var(--gold); line-height: 1; }
+.card-pos { font-family: 'Bebas Neue', sans-serif; font-size: 0.9rem; color: var(--accent); letter-spacing: 0.1em; }
+.card-flag { font-size: 1.4rem; }
+.card-avatar { font-size: 3rem; margin: 0.5rem 0; }
+.card-name { font-family: 'Bebas Neue', sans-serif; font-size: 1rem; letter-spacing: 0.08em; color: #fff; margin-bottom: 0.75rem; border-top: 1px solid var(--border); padding-top: 0.5rem; }
+.card-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem; }
+.card-stat { text-align: center; }
+.cs-val { display: block; font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; color: #fff; }
+.cs-label { font-size: 0.6rem; color: var(--muted); letter-spacing: 0.08em; }
+.card-details { display: flex; flex-direction: column; gap: 0.75rem; }
+.detail-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+.detail-label { font-size: 0.75rem; color: var(--muted); }
+.detail-val { font-size: 0.85rem; font-weight: 600; }
+.full-stat-bars { margin-top: 1rem; display: flex; flex-direction: column; gap: 0.4rem; }
+.stat-bar-row { display: flex; align-items: center; gap: 0.5rem; }
+.sb-label { font-size: 0.6rem; color: var(--muted); width: 72px; flex-shrink: 0; letter-spacing: 0.06em; }
+.sb-track { flex: 1; height: 5px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+.sb-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
+.sb-val { font-size: 0.7rem; font-weight: 700; width: 24px; text-align: right; }
+
+/* HUD */
+#match-wrapper { display: flex; flex-direction: column; min-height: 100vh; }
+.hud { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0.75rem 1rem 0.5rem; position: sticky; top: 0; z-index: 100; }
+.hud-score { display: flex; align-items: center; justify-content: center; gap: 0.75rem; }
+.hud-team { font-size: 0.7rem; color: var(--muted); letter-spacing: 0.1em; font-weight: 700; }
+.hud-team.us { color: var(--green); }
+.hud-team.them { color: var(--red); }
+.hud-goals { font-family: 'Bebas Neue', sans-serif; font-size: 2rem; color: #fff; letter-spacing: 0.05em; }
+.hud-minute { text-align: center; }
+.clock { font-family: 'Bebas Neue', sans-serif; font-size: 0.85rem; color: var(--muted); letter-spacing: 0.1em; }
+.hud-right { position: absolute; top: 0.75rem; right: 1rem; text-align: right; }
+.hud-rating { font-family: 'Bebas Neue', sans-serif; font-size: 1.5rem; letter-spacing: 0.05em; }
+.rating-label { font-size: 0.65rem; display: block; letter-spacing: 0.1em; color: var(--muted); }
+.hud-bars { display: flex; gap: 1rem; margin-top: 0.5rem; }
+.hud-bar-group { display: flex; align-items: center; gap: 0.4rem; flex: 1; }
+.hud-bar-label { font-size: 0.6rem; color: var(--muted); letter-spacing: 0.08em; width: 28px; flex-shrink: 0; }
+.hud-bar-track { flex: 1; height: 4px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden; }
+.hud-bar-fill { height: 100%; border-radius: 2px; transition: width 0.5s ease, background 0.5s; }
+.hud-bar-val { font-size: 0.65rem; color: var(--muted); width: 24px; text-align: right; }
+.hud-controls { display: flex; gap: 1rem; margin-top: 0.75rem; }
+.hud-control-group { flex: 1; }
+.hud-ctrl-label { font-size: 0.6rem; color: var(--muted); letter-spacing: 0.08em; display: block; margin-bottom: 0.3rem; }
+.toggle-group { display: flex; gap: 0.3rem; }
+.toggle-btn { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; color: var(--muted); font-size: 0.65rem; font-weight: 700; letter-spacing: 0.06em; padding: 0.3rem; cursor: pointer; transition: all 0.15s; }
+.toggle-btn:hover { border-color: var(--accent); color: var(--text); }
+.toggle-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.toggle-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* FEED */
+#match-feed-area { flex: 1; padding: 1rem; overflow-y: auto; }
+.feed-panel { display: flex; flex-direction: column; gap: 0.4rem; }
+.feed-entry { font-size: 0.85rem; color: var(--muted); padding: 0.4rem 0.6rem; border-left: 2px solid transparent; line-height: 1.5; }
+.feed-latest { color: var(--text); border-left-color: var(--accent); background: rgba(99,102,241,0.05); border-radius: 0 6px 6px 0; }
+
+/* EVENT */
+#event-area { flex: 1; overflow-y: auto; padding: 1rem; }
+.event-screen { padding: 0; min-height: auto; }
+.event-header { margin-bottom: 1rem; }
+.event-meta { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+.ev-minute { font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; color: var(--yellow); letter-spacing: 0.05em; }
+.ev-score { font-weight: 700; font-size: 0.9rem; }
+.ev-rating { font-family: 'Bebas Neue', sans-serif; font-size: 1rem; }
+.ev-stamina { font-size: 0.75rem; font-weight: 600; }
+.ev-weapon { font-size: 0.75rem; background: rgba(250,204,21,0.1); border: 1px solid rgba(250,204,21,0.3); border-radius: 4px; padding: 0.15rem 0.4rem; color: var(--yellow); }
+.pitch-map-container { border-radius: var(--radius); overflow: hidden; margin-bottom: 1.25rem; border: 1px solid var(--border); }
+.pitch-map { width: 100%; display: block; }
+.event-narrative { font-size: 0.95rem; line-height: 1.7; color: var(--text); margin-bottom: 1.5rem; padding: 1rem; background: var(--surface2); border-radius: var(--radius-sm); border-left: 3px solid var(--accent); }
+.choices-grid { display: flex; flex-direction: column; gap: 0.6rem; padding-bottom: 2rem; }
+.choice-card { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; cursor: pointer; text-align: left; color: var(--text); transition: border-color 0.15s, background 0.15s, transform 0.1s; }
+.choice-card:hover { border-color: var(--accent); transform: translateX(3px); }
+.choice-card.ego { border-left: 3px solid var(--yellow); }
+.choice-card.weapon-boosted { border-color: rgba(250,204,21,0.5); background: rgba(250,204,21,0.04); }
+.cc-top { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.3rem; }
+.cc-label { font-weight: 700; font-size: 0.95rem; }
+.cc-ego { font-size: 0.6rem; font-weight: 800; letter-spacing: 0.1em; background: var(--yellow); color: #000; padding: 0.1rem 0.35rem; border-radius: 3px; }
+.cc-boost { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.08em; background: rgba(250,204,21,0.2); color: var(--yellow); border: 1px solid rgba(250,204,21,0.4); padding: 0.1rem 0.35rem; border-radius: 3px; }
+.cc-desc { font-size: 0.8rem; color: var(--muted); margin-bottom: 0.3rem; line-height: 1.4; }
+.cc-stat { font-size: 0.7rem; color: var(--accent); }
+
+/* OUTCOME */
+.outcome-screen { padding: 0; min-height: auto; }
+.outcome-badge { text-align: center; font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem; letter-spacing: 0.1em; padding: 1rem; border-radius: var(--radius-sm); margin-bottom: 1rem; }
+.outcome-badge.nat20 { background: rgba(255,215,0,0.15); color: var(--gold); border: 1px solid rgba(255,215,0,0.4); }
+.outcome-badge.nat1  { background: rgba(239,68,68,0.15); color: var(--red); border: 1px solid rgba(239,68,68,0.4); }
+.outcome-badge.success { background: rgba(34,197,94,0.15); color: var(--green); border: 1px solid rgba(34,197,94,0.4); }
+.outcome-badge.failure { background: rgba(239,68,68,0.1); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
+.outcome-narrative { font-size: 0.95rem; line-height: 1.7; padding: 1rem; background: var(--surface2); border-radius: var(--radius-sm); margin-bottom: 1.25rem; border-left: 3px solid var(--accent2); }
+.dice-display { display: flex; align-items: center; justify-content: center; gap: 1.5rem; margin-bottom: 1rem; }
+.dice-block { text-align: center; }
+.dice-face { width: 64px; height: 64px; background: var(--surface2); border: 2px solid var(--border); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-family: 'Bebas Neue', sans-serif; font-size: 2rem; color: #fff; margin: 0 auto 0.4rem; }
+.dice-face.nat20 { border-color: var(--gold); color: var(--gold); box-shadow: 0 0 20px rgba(255,215,0,0.3); }
+.dice-face.nat1  { border-color: var(--red);  color: var(--red);  box-shadow: 0 0 20px rgba(239,68,68,0.3); }
+.dice-face.opp   { border-color: rgba(239,68,68,0.4); }
+.dice-label { font-size: 0.6rem; color: var(--muted); letter-spacing: 0.1em; margin-bottom: 0.2rem; }
+.dice-total { font-size: 0.75rem; color: var(--text); }
+.dice-vs { font-family: 'Bebas Neue', sans-serif; font-size: 1.2rem; color: var(--muted); }
+.adv-badge { text-align: center; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; padding: 0.3rem 0.6rem; border-radius: 4px; display: block; margin-bottom: 0.75rem; }
+.adv-badge.advantage { background: rgba(34,197,94,0.15); color: var(--green); }
+.adv-badge.disadvantage { background: rgba(239,68,68,0.1); color: var(--red); }
+.mods-list { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 1rem; justify-content: center; }
+.mod-chip { font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 600; }
+.mod-chip.pos { background: rgba(34,197,94,0.15); color: var(--green); }
+.mod-chip.neg { background: rgba(239,68,68,0.1); color: var(--red); }
+.outcome-rating { text-align: center; font-size: 0.85rem; color: var(--muted); margin-bottom: 0.5rem; }
+
+/* WEAPON DISCOVERY */
+.weapon-discovery { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; min-height: 100vh; gap: 1rem; }
+.wd-badge { font-family: 'Bebas Neue', sans-serif; font-size: 0.8rem; letter-spacing: 0.2em; color: var(--yellow); border: 1px solid var(--yellow); padding: 0.3rem 0.8rem; border-radius: 4px; }
+.wd-icon { font-size: 5rem; filter: drop-shadow(0 0 30px rgba(250,204,21,0.5)); }
+.weapon-discovery h2 { font-family: 'Bebas Neue', sans-serif; font-size: 2.5rem; letter-spacing: 0.05em; }
+.weapon-discovery p { color: var(--muted); max-width: 280px; font-size: 0.9rem; line-height: 1.6; }
+
+/* POST MATCH */
+.post-match-screen { padding: 1.5rem 1.25rem; }
+.pm-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border); }
+.pm-result { font-family: 'Bebas Neue', sans-serif; font-size: 2rem; letter-spacing: 0.1em; }
+.pm-score { font-family: 'Bebas Neue', sans-serif; font-size: 3rem; color: #fff; }
+.pm-rating-block { text-align: right; }
+.pm-rating { font-family: 'Bebas Neue', sans-serif; font-size: 3rem; line-height: 1; }
+.pm-band { font-size: 0.7rem; color: var(--muted); letter-spacing: 0.1em; }
+.pm-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; margin-bottom: 1.5rem; }
+.pm-stat { background: var(--surface2); border-radius: var(--radius-sm); padding: 0.75rem; text-align: center; }
+.pm-stat span { font-size: 0.65rem; color: var(--muted); display: block; letter-spacing: 0.06em; text-transform: uppercase; }
+.pm-stat strong { font-family: 'Bebas Neue', sans-serif; font-size: 1.6rem; display: block; margin-top: 0.2rem; }
+.pm-headline { font-size: 0.95rem; font-style: italic; color: var(--yellow); background: rgba(250,204,21,0.06); border: 1px solid rgba(250,204,21,0.2); border-radius: var(--radius-sm); padding: 0.75rem 1rem; margin-bottom: 1.5rem; line-height: 1.5; }
+.pm-manager, .pm-offpitch { background: var(--surface2); border-radius: var(--radius); padding: 1rem; margin-bottom: 1.25rem; }
+.pm-manager-label, .pm-op-label { font-size: 0.6rem; color: var(--accent); letter-spacing: 0.12em; font-weight: 700; text-transform: uppercase; margin-bottom: 0.5rem; }
+.pm-manager-quote { font-size: 0.9rem; line-height: 1.6; color: var(--muted); font-style: italic; }
+.pm-op-text { font-size: 0.9rem; line-height: 1.6; margin-bottom: 1rem; }
+.pm-op-choices { display: flex; flex-direction: column; gap: 0.5rem; }
+.op-choice { cursor: pointer; transition: all 0.15s; }
+.op-choice.selected { border-color: var(--green); background: rgba(34,197,94,0.08); }
+.pm-stat-gains { background: var(--surface2); border-radius: var(--radius); padding: 1rem; }
+.pm-sg-label { font-size: 0.6rem; color: var(--green); letter-spacing: 0.12em; font-weight: 700; text-transform: uppercase; margin-bottom: 0.75rem; }
+.stat-gain-row { display: flex; justify-content: space-between; padding: 0.4rem 0; border-bottom: 1px solid var(--border); }
+.sg-stat { font-size: 0.8rem; color: var(--muted); }
+.sg-val { font-weight: 700; color: var(--green); }
+
+/* DEBUG */
+#debug-container { position: fixed; bottom: 0; right: 0; width: 340px; max-height: 50vh; background: rgba(0,0,0,0.95); border: 1px solid rgba(99,102,241,0.4); border-radius: 12px 0 0 0; overflow-y: auto; z-index: 999; display: none; }
+.debug-toggle-bar { padding: 0.5rem 1rem; }
+.debug-toggle { background: var(--surface2); border: 1px solid var(--border); color: var(--muted); padding: 0.3rem 0.6rem; border-radius: 4px; font-size: 0.7rem; cursor: pointer; }
+.debug-panel { padding: 0.75rem; }
+.debug-title { font-size: 0.75rem; font-weight: 700; color: var(--accent); letter-spacing: 0.1em; margin-bottom: 0.5rem; }
+.debug-rolls { display: flex; flex-direction: column; gap: 0.4rem; }
+.debug-entry { font-size: 0.7rem; line-height: 1.5; border-left: 2px solid var(--border); padding-left: 0.5rem; display: flex; flex-wrap: wrap; gap: 0.3rem; align-items: center; }
+.debug-entry.nat20 { border-left-color: var(--gold); background: rgba(255,215,0,0.05); }
+.debug-entry.nat1  { border-left-color: var(--red); background: rgba(239,68,68,0.05); }
+.dr-label { color: var(--muted); width: 100%; font-size: 0.65rem; }
+.dr-dice  { color: var(--text); }
+.dr-mod   { color: var(--accent); }
+.dr-extra { color: var(--green); font-size: 0.65rem; }
+.dr-total { color: #fff; font-weight: 700; }
+.dr-badge { font-size: 0.6rem; font-weight: 800; padding: 0.1rem 0.3rem; border-radius: 3px; }
+.dr-badge.nat20 { background: var(--gold); color: #000; }
+.dr-badge.nat1  { background: var(--red);  color: #fff; }
+
+/* SPLASH */
+.splash-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; text-align: center; gap: 1.5rem; background: radial-gradient(ellipse at center, #1a1a2e 0%, var(--bg) 70%); }
+.splash-logo { font-family: 'Bebas Neue', sans-serif; font-size: 5rem; letter-spacing: 0.1em; color: #fff; line-height: 1; }
+.splash-tagline { font-size: 0.85rem; color: var(--muted); letter-spacing: 0.15em; text-transform: uppercase; }
+.splash-btn { background: none; border: 2px solid var(--accent); color: var(--accent); font-family: 'Bebas Neue', sans-serif; font-size: 1.2rem; letter-spacing: 0.15em; padding: 0.75rem 3rem; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+.splash-btn:hover { background: var(--accent); color: #fff; }
+
+@media (max-width: 400px) {
+  .flag-grid { grid-template-columns: repeat(4, 1fr); }
+  .profile-grid { grid-template-columns: 1fr; }
+  .card-container { grid-template-columns: 1fr; }
+  .pm-stats { grid-template-columns: repeat(2, 1fr); }
+  #debug-container { width: 100%; border-radius: 12px 12px 0 0; }
+}
