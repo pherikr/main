@@ -299,7 +299,7 @@ export function eventScreen(eventDef, filteredChoices) {
           ${boosted ? `<span class="cc-boost">${weapon.icon} BOOSTED</span>` : ''}
         </div>
         <div class="cc-desc">${c.desc}</div>
-        <div class="cc-stat">Uses: <strong>${c.stat.replace('_',' ').toUpperCase()}</strong> (${p.stats[c.stat] || '?'})</div>
+        <div class="cc-stat">Uses: <strong>${(c.yourStats || [c.stat]).map(s => s.replace('_',' ').toUpperCase()).join(' + ')}</strong></div>
       </button>`;
     }).join('')}
   </div>

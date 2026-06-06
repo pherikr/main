@@ -249,7 +249,7 @@
           ${t?`<span class="cc-boost">${u.icon} BOOSTED</span>`:``}
         </div>
         <div class="cc-desc">${e.desc}</div>
-        <div class="cc-stat">Uses: <strong>${e.stat.replace(`_`,` `).toUpperCase()}</strong> (${a.stats[e.stat]||`?`})</div>
+        <div class="cc-stat">Uses: <strong>${(e.yourStats||[e.stat]).map(e=>e.replace(`_`,` `).toUpperCase()).join(` + `)}</strong></div>
       </button>`}).join(``)}
   </div>
 </div>`}function se(t,n){let{success:r,isNat20:i,isNat1:a,playerRoll:o,oppRoll:s,choice:c}=t,u=e.match,{label:d,color:f}=l.band(u.rating);return`
