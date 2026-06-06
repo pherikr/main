@@ -4,38 +4,59 @@ import { roll, statToModifier } from './dice.js';
 import { RatingEngine } from './RatingEngine.js';
 import { WEAPONS } from '../data/weapons.js';
 
-// Build modifier stack for a choice roll
-function buildModifiers(choice, eventDef) {
+// ── STAT RESOLUTION ───────────────────────────────────────────────────────────
+
+// Average player stats from a choice's yourStats array
+function avgPlayerStat(yourStats) {
+  const p = GameState.player;
+  if (!yourStats?.length) return 50;
+  const vals = yourStats.map(k => p.stats[k] || 50);
+  return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+}
+
+// Average opponent stats from a choice's oppStats array
+function avgOppStat(oppStats) {
+  const opp = GameState.opponent;
+  if (!oppStats?.length) return 52;
+  const vals = oppStats.map(k => {
+    // GK keys
+    if (k.startsWith('gk_')) return opp.gk[k] ?? 53;
+    return opp.defender[k] ?? 52;
+  });
+  return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+}
+
+// ── MODIFIER STACK ────────────────────────────────────────────────────────────
+
+function buildModifiers(choice) {
   const m = GameState.match;
   const p = GameState.player;
   const mods = [];
 
-  // Smart bonus (non-ego choice = the situationally safer option)
-  if (!choice.isEgo) {
+  // Smart bonus — defined per-choice in the event definition
+  if (choice.smartBonus) {
     mods.push({ label: 'Smart choice', value: Math.floor(Math.random() * 3) + 1 });
   }
 
-  // Ego bonus
-  if (choice.isEgo && p.stats.ego >= 60) {
+  // Ego bonus — high ego stat rewards the flashy call
+  if (choice.isEgo && (p.stats.ego || 50) >= 60) {
     mods.push({ label: 'Ego', value: 1 });
   }
 
   // Form modifier
   if (m.formModifier !== 0) {
-    mods.push({ label: 'Form', value: m.formModifier });
+    mods.push({ label: 'Form', value: Math.round(m.formModifier) });
   }
 
   // Stamina modifier
-  const staminaMod = staminaMod_(m.stamina);
-  if (staminaMod !== 0) {
-    mods.push({ label: 'Stamina', value: staminaMod });
-  }
+  const sm = staminaMod(m.stamina);
+  if (sm !== 0) mods.push({ label: 'Stamina', value: sm });
 
   // Confidence
-  if (m.confidence >= 70) mods.push({ label: 'Confidence', value: 1 });
+  if (m.confidence >= 70)      mods.push({ label: 'Confidence', value: 1 });
   else if (m.confidence <= 30) mods.push({ label: 'Low confidence', value: -1 });
 
-  // Weapon
+  // Weapon bonus
   const weaponId = resolvedWeaponId();
   if (weaponId && choice.weaponBoost?.includes(weaponId)) {
     const w = WEAPONS.find(w => w.id === weaponId);
@@ -45,7 +66,7 @@ function buildModifiers(choice, eventDef) {
   return mods;
 }
 
-function staminaMod_(stamina) {
+function staminaMod(stamina) {
   if (stamina >= 70) return 0;
   if (stamina >= 40) return -1;
   if (stamina >= 20) return -2;
@@ -58,30 +79,35 @@ function resolvedWeaponId() {
   return p.weapon;
 }
 
+// ── ADVANTAGE / DISADVANTAGE ──────────────────────────────────────────────────
+
 function shouldHaveAdvantage(choice) {
   const m = GameState.match;
-  const p = GameState.player;
-  const statVal = p.stats[choice.stat] || 50;
-  const weaponId = resolvedWeaponId();
+  const playerStat = avgPlayerStat(choice.yourStats);
+  const oppStat    = avgOppStat(choice.oppStats);
+  const weaponId   = resolvedWeaponId();
   return (
-    statVal >= 65 ||
+    playerStat >= oppStat + 15 ||
     (weaponId && choice.weaponBoost?.includes(weaponId)) ||
-    m.momentum >= 70 ||
-    (m.confidence >= 70 && m.match?.workRate === 'high')
+    m.momentum >= 70
   );
 }
 
 function shouldHaveDisadvantage(choice) {
   const m = GameState.match;
+  const playerStat = avgPlayerStat(choice.yourStats);
+  const oppStat    = avgOppStat(choice.oppStats);
   return (
+    oppStat >= playerStat + 15 ||
     m.stamina < 39 ||
     m.momentum <= 30 ||
     m.rattled
   );
 }
 
+// ── PUBLIC API ────────────────────────────────────────────────────────────────
+
 export const EventEngine = {
-  // Filter choices based on stat gates / weapon gates
   filterChoices(eventDef) {
     const p = GameState.player;
     const weaponId = resolvedWeaponId();
@@ -90,41 +116,39 @@ export const EventEngine = {
         const val = p.stats[c.statGate.stat] || 0;
         if (val < c.statGate.min) return false;
       }
-      if (c.weaponGate) {
-        if (c.weaponGate !== weaponId) return false;
-      }
+      if (c.weaponGate && c.weaponGate !== weaponId) return false;
       return true;
     });
   },
 
-  // Resolve a player's choice in an event. Returns result object.
   resolve(eventDef, choice) {
     const m = GameState.match;
     const p = GameState.player;
 
-    const statVal = p.stats[choice.stat] || 50;
-    const extraMods = buildModifiers(choice, eventDef);
+    // Player roll — average of yourStats
+    const playerStatAvg = avgPlayerStat(choice.yourStats);
+    const extraMods     = buildModifiers(choice);
 
     const adv = shouldHaveAdvantage(choice) && !shouldHaveDisadvantage(choice);
     const dis = !adv && shouldHaveDisadvantage(choice);
 
-    const result = roll(`${eventDef.id} — ${choice.label}`, {
-      stat: statVal,
+    const playerRoll = roll(`${eventDef.id} — ${choice.label}`, {
+      stat: playerStatAvg,
       advantage: adv,
       disadvantage: dis,
       extraMods,
     });
 
-    // Defender roll (abstract opponent)
-    const oppStat = 50 + Math.floor(Math.random() * 10); // 50-60
-    const oppResult = roll(`${eventDef.id} — Opponent`, {
-      stat: oppStat,
+    // Opponent roll — average of oppStats mapped to real defender/GK stats
+    const oppStatAvg = avgOppStat(choice.oppStats);
+    const oppRoll = roll(`${eventDef.id} — Opponent (${(choice.oppStats||[]).join(', ')})`, {
+      stat: oppStatAvg,
       extraMods: [],
     });
 
-    const isNat20 = result.isNat20;
-    const isNat1  = result.isNat1;
-    let success = isNat20 ? true : isNat1 ? false : result.total > oppResult.total;
+    const isNat20 = playerRoll.isNat20;
+    const isNat1  = playerRoll.isNat1;
+    const success = isNat20 ? true : isNat1 ? false : playerRoll.total > oppRoll.total;
 
     // Rating
     if (!isNat20 && !isNat1) {
@@ -137,28 +161,22 @@ export const EventEngine = {
     if (isNat1)  { RatingEngine.apply('nat1_penalty'); m.rattled = true; }
     else          m.rattled = false;
 
-    // Stamina drain
+    // Stamina drain per event action
     drainStamina();
 
-    // Momentum
-    m.momentum = Math.max(0, Math.min(100, m.momentum + (success ? 8 : -8)));
-    m.confidence = Math.max(0, Math.min(100, m.confidence + (success ? 5 : -5)));
+    // Momentum / confidence / form
+    m.momentum   = Math.max(0, Math.min(100, m.momentum   + (success ?  8 : -8)));
+    m.confidence = Math.max(0, Math.min(100, m.confidence + (success ?  5 : -5)));
     m.formModifier = Math.max(-2, Math.min(2, m.formModifier + (success ? 0.5 : -0.5)));
 
     m.eventsResolved++;
     m.cascadeDepth++;
 
-    // Cascade chain bonus
     if (m.cascadeDepth >= 3 && !m.cascadeBonus) {
       RatingEngine.apply('cascade_bonus');
       m.cascadeBonus = true;
     }
 
-    // Determine next
-    const cascade = eventDef.cascades[choice.id];
-    const next = success ? cascade.success : cascade.failure;
-
-    // Ego stat tracking
     if (choice.isEgo) m.egoChoicesMade++;
 
     // Weapon discovery
@@ -166,17 +184,23 @@ export const EventEngine = {
       discoverWeapon(choice);
     }
 
+    const cascade = eventDef.cascades[choice.id];
+    let next = success ? cascade.success : cascade.failure;
+
+    // Fix 3: FOUL_AGAINST in the box → promote to PENALTY
+    if (next === 'FOUL_AGAINST') {
+      next = 'PENALTY_TRIGGER';
+    }
+
     return {
       success, isNat20, isNat1,
-      playerRoll: result,
-      oppRoll: oppResult,
+      playerRoll, oppRoll,
       next,
       choice,
       eventDef,
     };
   },
 
-  // Get a random event for a given chance type + player position
   pickEvent(chanceType, excludeIds = []) {
     const pos = GameState.player.position;
     const pool = EVENT_POOL.filter(e =>
@@ -185,7 +209,9 @@ export const EventEngine = {
       !excludeIds.includes(e.id)
     );
     if (!pool.length) return null;
-    return pool[Math.floor(Math.random() * pool.length)];
+    const entry = pool[Math.floor(Math.random() * pool.length)];
+    // Return full event def
+    return EVENTS[entry.id] || null;
   },
 
   getEvent(id) {
@@ -193,17 +219,27 @@ export const EventEngine = {
   },
 };
 
+// ── STAMINA DRAIN ─────────────────────────────────────────────────────────────
+// Fix 1: High work rate is now 3× base — stat 50 hits yellow ~min 40, red ~min 65
+
 function drainStamina() {
   const m = GameState.match;
   const p = GameState.player;
-  const baseDrain = { low: 0.3, medium: 0.6, high: 1.2 }[m.workRate];
-  const staminaFactor = 1 - (p.stats.stamina - 42) / 52; // higher stamina = slower drain
-  m.stamina = Math.max(0, m.stamina - baseDrain * (0.5 + staminaFactor));
+
+  // Base drain per event action (not per minute — passive drain handles time)
+  const baseDrain = { low: 0.5, medium: 1.2, high: 3.6 }[m.workRate];
+
+  // staminaStat 42→1.0 scale factor, 68→0.23 (higher stat = slower drain)
+  const staminaStat = p.stats.stamina || 50;
+  const factor = 1 - (staminaStat - 42) / 78;  // 42→1.0, 68→0.67
+
+  m.stamina = Math.max(0, m.stamina - baseDrain * factor);
 }
 
 function discoverWeapon(choice) {
   const m = GameState.match;
-  const candidates = WEAPONS.filter(w => w.matches.includes(choice.pitchType));
+  const pitchType = choice.pitchType || '';
+  const candidates = WEAPONS.filter(w => w.matches?.includes(pitchType));
   const chosen = candidates.length
     ? candidates[Math.floor(Math.random() * candidates.length)]
     : WEAPONS[Math.floor(Math.random() * WEAPONS.length)];

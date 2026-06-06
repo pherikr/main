@@ -27,10 +27,10 @@ const CHANCE_TYPES = [
 ];
 
 const POSITION_CHANCE_WEIGHTS = {
-  ST:  { through_ball: 3, central: 3, wide: 2, counter: 3, free_kick: 1, corner: 2, corner_against: 1 },
-  CAM: { central: 4, through_ball: 3, wide: 1, counter: 2, free_kick: 2, corner: 2, corner_against: 1 },
-  LW:  { wide: 4, through_ball: 2, counter: 3, central: 1, free_kick: 1, corner: 3, corner_against: 1 },
-  RW:  { wide: 4, through_ball: 2, counter: 3, central: 1, free_kick: 1, corner: 3, corner_against: 1 },
+  ST:  { through_ball: 3, central: 3, wide: 2, counter: 3, free_kick: 1, corner: 2, corner_against: 1, penalty: 0 },
+  CAM: { central: 4, through_ball: 3, wide: 1, counter: 2, free_kick: 2, corner: 2, corner_against: 1, penalty: 0 },
+  LW:  { wide: 4, through_ball: 2, counter: 3, central: 1, free_kick: 1, corner: 3, corner_against: 1, penalty: 0 },
+  RW:  { wide: 4, through_ball: 2, counter: 3, central: 1, free_kick: 1, corner: 3, corner_against: 1, penalty: 0 },
 };
 
 export const MatchEngine = {
@@ -168,8 +168,29 @@ export const MatchEngine = {
         // cascade to A2 handled by EventEngine, this is just fallback
         entries.push(`You're through on goal...`);
         break;
-      case 'A2_HALF':
-        entries.push(`Half a chance — just wide.`);
+      case 'NEAR_MISS':
+        entries.push(`😬 So close! Ball clips the post and goes wide.`);
+        break;
+      case 'BLOCKED':
+        entries.push(`🚫 Defender throws himself in front — blocked!`);
+        break;
+      case 'CORNER_WON':
+        entries.push(`🚩 Corner won! Good delivery coming up.`);
+        break;
+      case 'GOAL_KICK':
+        entries.push(`⬆ Too high — keeper takes the goal kick.`);
+        break;
+      case 'FOUL_AGAINST':
+        entries.push(`📋 Foul given against you. Free kick to them.`);
+        break;
+      case 'COUNTER_DANGER':
+        m.score.them++;
+        RatingEngine.apply('caught_upfield');
+        entries.push(`💔 ${m.score.us}–${m.score.them} — Counter. They punish the gamble.`);
+        m.momentum = Math.max(0, m.momentum - 20);
+        break;
+      case 'POSSESSION_RESET':
+        entries.push(`🔄 Possession retained. Team resets.`);
         break;
       default:
         entries.push(`${minute}' — Play continues.`);
@@ -181,9 +202,12 @@ export const MatchEngine = {
   drainStaminaPassive(minutes) {
     const m = GameState.match;
     const p = GameState.player;
-    const drainPerMin = { low: 0.1, medium: 0.2, high: 0.4 }[m.workRate];
-    const staminaFactor = 1 - (p.stats.stamina - 42) / 52;
-    m.stamina = Math.max(0, m.stamina - drainPerMin * minutes * (0.5 + staminaFactor));
+    // Fix 1: aggressive high-rate drain — stat 50 on high hits yellow ~min 40, red ~min 65
+    // Base per-minute: low=0.15, medium=0.4, high=1.1
+    const drainPerMin = { low: 0.15, medium: 0.4, high: 1.1 }[m.workRate];
+    const staminaStat = p.stats.stamina || 50;
+    const factor = 1 - (staminaStat - 42) / 78;  // 42→1.0, 68→0.67
+    m.stamina = Math.max(0, m.stamina - drainPerMin * minutes * factor);
   },
 };
 

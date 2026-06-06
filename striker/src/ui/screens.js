@@ -407,6 +407,12 @@ export function postMatchScreen() {
     <div class="pm-stat"><span>Ego Plays</span><strong>${m.egoChoicesMade}</strong></div>
   </div>
 
+  ${m.exhaustionSub ? `
+  <div class="pm-sub-notice">
+    🚑 <strong>Substituted through exhaustion</strong> — stamina ran out before full time.
+    Work rate management will be critical going forward.
+  </div>` : ''}
+
   <div class="pm-headline">"${headline}"</div>
 
   <div class="pm-manager">

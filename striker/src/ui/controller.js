@@ -180,15 +180,37 @@ function runMatchTick() {
     return;
   }
 
-  // Advance 3 minutes per tick
+  // Fix 4: stamina 0 = substitution — match continues without player events
+  if (m.stamina <= 0 && !m.substituted) {
+    m.substituted = true;
+    m.exhaustionSub = true;
+    m.stamina = 0;
+    m.feed.push(`🚑 ${m.minute}' — You're being substituted. Your legs gave out. The manager has no choice.`);
+    refreshFeed();
+    refreshHUD();
+    // Continue match sim but player never gets involved again
+    matchTimer = setTimeout(runMatchTick, 1200);
+    return;
+  }
+
   const tickMinutes = 3;
   m.minute = Math.min(90, m.minute + tickMinutes);
   MatchEngine.drainStaminaPassive(tickMinutes);
 
   // Force late drama at 82'
-  if (m.minute >= 82 && !a6Scheduled && (m.score.us <= m.score.them)) {
+  if (m.minute >= 82 && !a6Scheduled && (m.score.us <= m.score.them) && !m.substituted) {
     a6Scheduled = true;
     triggerEvent(EventEngine.getEvent('A6'));
+    return;
+  }
+
+  // If substituted — run background-only simulation, no player events
+  if (m.substituted) {
+    const bgEntries = runBackgroundOnly(m.minute);
+    bgEntries.forEach(e => m.feed.push(e));
+    refreshFeed();
+    refreshHUD();
+    matchTimer = setTimeout(runMatchTick, Math.max(400, tickMinutes * 300));
     return;
   }
 
@@ -201,10 +223,8 @@ function runMatchTick() {
 
   if (playerInvolved && eventDef) {
     clearTimeout(matchTimer);
-    // Brief pause then show event
     matchTimer = setTimeout(() => triggerEvent(eventDef), 600);
   } else {
-    // Continue after ~1.2s per minute
     matchTimer = setTimeout(runMatchTick, Math.max(400, tickMinutes * 400));
   }
 }
@@ -264,7 +284,19 @@ function handleContinue(result) {
   const next = result.next;
   const m = GameState.match;
 
-  // Reset cascade depth if going back to feed
+  // Fix 3: FOUL_AGAINST in box → PENALTY event
+  if (next === 'PENALTY_TRIGGER') {
+    m.feed.push(`🟡 ${m.minute}' — Foul in the box! PENALTY to us!`);
+    refreshFeed();
+    const penaltyEvent = EventEngine.getEvent('PENALTY');
+    if (penaltyEvent) {
+      triggerEvent(penaltyEvent);
+    } else {
+      returnToMatch();
+    }
+    return;
+  }
+
   if (isTerminal(next)) {
     const entries = MatchEngine.resolveTerminal(next, m.minute);
     entries.forEach(e => m.feed.push(e));
@@ -272,7 +304,6 @@ function handleContinue(result) {
     m.cascadeBonus = false;
     returnToMatch();
   } else {
-    // Cascade to next event
     const nextEvent = EventEngine.getEvent(next);
     if (nextEvent) {
       triggerEvent(nextEvent);
@@ -488,6 +519,36 @@ function buildOutcomeNarrative(result) {
 }
 
 function isTerminal(nextId) {
-  const cascadeIds = ['A1','A2','A2_KEEPER','A2_HALF','A3','A4','A5','A6','D1','SP1','SP2','C1','C2'];
+  // All event IDs that cascade to another event (not a terminal resolution)
+  const cascadeIds = [
+    'A1','A2','A3','A4','A5','A6','A7','A8',
+    'A1_KEEPER','A2_HALF',
+    'C1_OVERLAP','C2_SWITCH',
+    'D1_CORNER_AGAINST','D2_TRACKING_BACK',
+    'COUNTER_CASCADE',
+    'SP_FREEKICK_CLOSE','SP_CORNER','SP_CORNER_HEADER',
+    'PENALTY',
+    // Legacy IDs kept for safety
+    'D1','SP1','SP2','C1','C2',
+  ];
   return !cascadeIds.includes(nextId);
+}
+
+// Background-only simulation when player is substituted
+function runBackgroundOnly(minute) {
+  const m = GameState.match;
+  const feed = [];
+  const r = Math.random();
+  if (r > 0.88) {
+    m.score.us++;
+    feed.push(`⚽ ${m.score.us}–${m.score.them} — Team goal while you watch from the bench.`);
+  } else if (r > 0.78) {
+    m.score.them++;
+    feed.push(`💔 ${m.score.us}–${m.score.them} — They score. You can only watch.`);
+  } else if (r > 0.5) {
+    feed.push(`${minute}' — Team pressing hard without you.`);
+  } else {
+    feed.push(`${minute}' — Match continues. You're on the bench.`);
+  }
+  return feed;
 }

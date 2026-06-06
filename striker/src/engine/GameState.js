@@ -34,6 +34,26 @@ export const GameState = {
     cascadeBonus: false,
     ratingHistory: [],
     rattled: false,        // just came off nat 1
+    substituted: false,    // player subbed off
+    exhaustionSub: false,  // subbed due to stamina = 0
+  },
+
+  // Opponent — Academy tier fixed stats
+  opponent: {
+    defender: {
+      shortTackle: 52,
+      slideTackle: 50,
+      positioning: 54,
+      pace: 51,
+      physicality: 53,
+      heading: 52,
+    },
+    gk: {
+      gk_diving:    55,
+      gk_reflexes:  53,
+      gk_composure: 54,
+      gk_handling:  52,
+    },
   },
 
   // Debug
@@ -72,6 +92,8 @@ export const GameState = {
       cascadeBonus: false,
       ratingHistory: [],
       rattled: false,
+      substituted: false,
+      exhaustionSub: false,
     };
     this.debug.rolls = [];
     this.postMatch = { statChanges: {}, managerQuote: '', headline: '', offPitchEvent: null };
