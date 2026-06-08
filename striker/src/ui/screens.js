@@ -2,11 +2,85 @@
 
 import { NATIONS } from '../data/nations.js';
 import { PROFILES } from '../data/profiles.js';
+import { BACKGROUNDS, SCHOOL_FOCUS, YOUTH_EVENTS, NATIONALITY_NAMES, FORMATION_433, POSITION_MAP } from '../data/background.js';
 import { WEAPONS, DISCOVER_OPTION } from '../data/weapons.js';
 import { GameState } from '../engine/GameState.js';
 import { RatingEngine } from '../engine/RatingEngine.js';
 import { renderPitchMap } from './pitchMap.js';
 import { renderStatsBlock } from '../data/events_flavor.js';
+
+// ── CLUB OFFERS DATA ─────────────────────────────────────────────────────────
+
+const CLUB_OFFERS = {
+  elite: [
+    { name: 'Arsenal Academy',    badge: '🔴', league: 'Premier League Academy' },
+    { name: 'Chelsea Academy',    badge: '💙', league: 'Premier League Academy' },
+    { name: 'Real Madrid Academy',badge: '⚪', league: 'La Liga Academy' },
+    { name: 'Barcelona Academy',  badge: '🔵', league: 'La Liga Academy' },
+  ],
+  high: [
+    { name: 'Everton Academy',       badge: '🔵', league: 'Premier League Academy' },
+    { name: 'West Ham Academy',      badge: '🔵', league: 'Premier League Academy' },
+    { name: 'Wolves Academy',        badge: '🟡', league: 'Premier League Academy' },
+    { name: 'Fulham Academy',        badge: '⬛', league: 'Premier League Academy' },
+    { name: 'Southampton Academy',   badge: '🔴', league: 'Premier League Academy' },
+    { name: 'Nottm Forest Academy',  badge: '🔴', league: 'Premier League Academy' },
+  ],
+  local: {
+    egypt:        [{ name: 'Zamalek Academy', badge: '⬜', league: 'Egyptian Premier League' }, { name: 'Al Ahly Academy', badge: '🔴', league: 'Egyptian Premier League' }],
+    nigeria:      [{ name: 'Enyimba Academy', badge: '🔴', league: 'NPFL' }, { name: 'Rangers FC Academy', badge: '🟢', league: 'NPFL' }],
+    england:      [{ name: 'Stoke City Academy', badge: '🔴', league: 'Championship' }, { name: 'Sheffield Wednesday Academy', badge: '🔵', league: 'Championship' }],
+    brazil:       [{ name: 'Flamengo Academy', badge: '🔴', league: 'Brasileirão' }, { name: 'Grêmio Academy', badge: '🔵', league: 'Brasileirão' }],
+    france:       [{ name: 'Lens Academy', badge: '🟡', league: 'Ligue 2' }, { name: 'Auxerre Academy', badge: '🔵', league: 'Ligue 2' }],
+    spain:        [{ name: 'Málaga Academy', badge: '🔵', league: 'Segunda División' }, { name: 'Levante Academy', badge: '🔵', league: 'Segunda División' }],
+    germany:      [{ name: 'Karlsruher SC Academy', badge: '🔵', league: '2. Bundesliga' }, { name: 'Kaiserslautern Academy', badge: '🔴', league: '2. Bundesliga' }],
+    portugal:     [{ name: 'Vitória SC Academy', badge: '⬛', league: 'Primeira Liga' }, { name: 'Boavista Academy', badge: '⬛', league: 'Primeira Liga' }],
+    argentina:    [{ name: 'San Lorenzo Academy', badge: '🔵', league: 'Primera División' }, { name: 'Racing Club Academy', badge: '🔵', league: 'Primera División' }],
+    netherlands:  [{ name: 'FC Utrecht Academy', badge: '🔴', league: 'Eredivisie' }, { name: 'Heracles Academy', badge: '⬛', league: 'Eredivisie' }],
+    italy:        [{ name: 'Genoa Academy', badge: '🔴', league: 'Serie B' }, { name: 'Palermo Academy', badge: '🌸', league: 'Serie B' }],
+    senegal:      [{ name: 'Génération Foot', badge: '🟢', league: 'Ligue 1 Sénégal' }, { name: 'AS Douanes Academy', badge: '🔵', league: 'Ligue 1 Sénégal' }],
+    ghana:        [{ name: 'Hearts of Oak Academy', badge: '🔴', league: 'Ghana Premier League' }, { name: 'Asante Kotoko Academy', badge: '🟡', league: 'Ghana Premier League' }],
+    morocco:      [{ name: 'Raja Casablanca Academy', badge: '🟢', league: 'Botola Pro' }, { name: 'Wydad Academy', badge: '🔴', league: 'Botola Pro' }],
+    ivory_coast:  [{ name: 'ASEC Mimosas Academy', badge: '🟡', league: 'Ligue 1 CI' }, { name: 'Africa Sports Academy', badge: '🟢', league: 'Ligue 1 CI' }],
+    cameroon:     [{ name: 'Coton Sport Academy', badge: '⬛', league: 'MTN Elite One' }, { name: 'Eding Sport Academy', badge: '🟢', league: 'MTN Elite One' }],
+    algeria:      [{ name: 'USM Alger Academy', badge: '🔴', league: 'Ligue Professionnelle 1' }, { name: 'MC Oran Academy', badge: '🟢', league: 'Ligue Professionnelle 1' }],
+    japan:        [{ name: 'Júbilo Iwata Academy', badge: '🔵', league: 'J2 League' }, { name: 'Tokushima Vortis Academy', badge: '🔵', league: 'J2 League' }],
+    south_korea:  [{ name: 'Daejeon Citizen Academy', badge: '🟡', league: 'K League 1' }, { name: 'Gangwon FC Academy', badge: '🟠', league: 'K League 1' }],
+    usa:          [{ name: 'Columbus Crew Academy', badge: '🟡', league: 'MLS Academy' }, { name: 'FC Cincinnati Academy', badge: '🔵', league: 'MLS Academy' }],
+    mexico:       [{ name: 'Cruz Azul Academy', badge: '🔵', league: 'Liga MX' }, { name: 'San Luis Academy', badge: '🔴', league: 'Liga MX' }],
+    colombia:     [{ name: 'Junior FC Academy', badge: '🔴', league: 'Categoría Primera A' }, { name: 'Cali Academy', badge: '🟢', league: 'Categoría Primera A' }],
+    uruguay:      [{ name: 'Nacional Academy', badge: '🔵', league: 'Primera División' }, { name: 'Defensor Sporting Academy', badge: '🟣', league: 'Primera División' }],
+    croatia:      [{ name: 'Hajduk Split Academy', badge: '⬛', league: 'Prva HNL' }, { name: 'Rijeka Academy', badge: '⬛', league: 'Prva HNL' }],
+    sweden:       [{ name: 'Malmö FF Academy', badge: '🔵', league: 'Allsvenskan' }, { name: 'AIK Academy', badge: '⬛', league: 'Allsvenskan' }],
+    turkey:       [{ name: 'Trabzonspor Academy', badge: '🟤', league: 'Süper Lig' }, { name: 'Bursaspor Academy', badge: '🟢', league: '1. Lig' }],
+    poland:       [{ name: 'Lech Poznań Academy', badge: '🔵', league: 'Ekstraklasa' }, { name: 'Cracovia Academy', badge: '🔴', league: 'Ekstraklasa' }],
+    serbia:       [{ name: 'Vojvodina Academy', badge: '🔴', league: 'SuperLiga' }, { name: 'Čukarički Academy', badge: '🔴', league: 'SuperLiga' }],
+    denmark:      [{ name: 'Randers FC Academy', badge: '🔵', league: 'Superliga' }, { name: 'Viborg FF Academy', badge: '🟢', league: 'Superliga' }],
+    saudi:        [{ name: 'Al-Qadsiah Academy', badge: '🟢', league: 'Saudi Pro League' }, { name: 'Al-Fateh Academy', badge: '🟡', league: 'Saudi Pro League' }],
+    default:      [{ name: 'Stoke City Academy', badge: '🔴', league: 'Championship' }, { name: 'Barnsley Academy', badge: '🔴', league: 'Championship' }],
+  },
+  low: [
+    { name: 'Hartlepool United Academy', badge: '⬛', league: 'National League' },
+    { name: 'Solihull Moors Academy',    badge: '🟡', league: 'National League' },
+    { name: 'Altrincham Academy',        badge: '🔴', league: 'National League North' },
+    { name: 'Gateshead Academy',         badge: '⬛', league: 'National League' },
+  ],
+  nonleague: [
+    { name: 'Stafford Rangers',   badge: '⬛', league: 'Northern Premier League' },
+    { name: 'Nantwich Town',      badge: '🔴', league: 'Northern Premier League' },
+    { name: 'Warrington Rylands', badge: '🔵', league: 'Northern Premier League' },
+  ],
+};
+
+function getOffers(m, p) {
+  const rating = m.rating;
+  const nat = p.nationality || 'default';
+  if (rating >= 9.0) return CLUB_OFFERS.elite;
+  if (rating >= 8.0) return CLUB_OFFERS.high.sort(() => Math.random() - 0.5).slice(0, 2);
+  if (rating >= 6.0) return CLUB_OFFERS.local[nat] || CLUB_OFFERS.local.default;
+  if (rating >= 4.0) return CLUB_OFFERS.low.sort(() => Math.random() - 0.5).slice(0, 2);
+  return CLUB_OFFERS.nonleague.sort(() => Math.random() - 0.5).slice(0, 2);
+}
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
 
@@ -417,6 +491,104 @@ export function weaponDiscoveryScreen(weapon) {
 </div>`;
 }
 
+// ── SOCIAL FEED ───────────────────────────────────────────────────────────────
+
+function generateSocialFeed(m, p) {
+  const name = p.name || 'The Kid';
+  const nat = p.nationality || '';
+  const rating = m.rating;
+  const goals = m.goals || 0;
+  const assists = m.assists || 0;
+  const sentOff = m.sentOff || false;
+  const result = m.score.us > m.score.them ? 'win' :
+                 m.score.us < m.score.them ? 'loss' : 'draw';
+  const scoreStr = `${m.score.us}-${m.score.them}`;
+  const ego = m.egoChoicesMade || 0;
+
+  // ── OFFICIAL ────────────────────────────────────────────────────────────────
+  const officialPosts = [];
+  if (goals >= 3) {
+    officialPosts.push({ source: 'AcademyWatch Report', handle: '@AcademyWatchHQ', verified: true,
+      text: `HAT-TRICK ALERT 🚨 ${name} bags THREE in the academy finals today. At ${p.position}, the youngster showed composure beyond their years. Full match report ↓`, time: 'Match Report' });
+  }
+  if (goals >= 2 && goals < 3) {
+    officialPosts.push({ source: 'Youth Football Daily', handle: '@YouthFBDaily', verified: true,
+      text: `BRACE: ${name} scores twice in today's U18 national finals (${scoreStr}). The ${nat} forward looks every inch a professional prospect. 📊 Rating: ${rating.toFixed(1)}`, time: 'Match Report' });
+  }
+  if (goals === 1 && assists >= 1) {
+    officialPosts.push({ source: 'Academy Scout Network', handle: '@AcademyScoutNet', verified: true,
+      text: `Goal and assist from ${name} today. The ${nat} youngster was directly involved in ${goals + assists} of the team's attacks. One to watch. 👀`, time: 'Match Report' });
+  }
+  if (sentOff) {
+    officialPosts.push({ source: 'Academy Watch Report', handle: '@AcademyWatchHQ', verified: true,
+      text: `SENT OFF: ${name} was shown a red card in today's U18 finals. The incident overshadowed what had been an otherwise ${rating >= 6.5 ? 'impressive' : 'mixed'} performance. Disciplinary review expected.`, time: 'Match Report' });
+  }
+  if (rating >= 8.5 && goals === 0) {
+    officialPosts.push({ source: 'Youth Football Daily', handle: '@YouthFBDaily', verified: true,
+      text: `No goals but ${name} was arguably the best player on the pitch today. Movement, creativity, decision-making — this is a player coaches dream about. Rating: ${rating.toFixed(1)} 🌟`, time: 'Match Report' });
+  }
+  if (result === 'loss' && rating >= 7.0) {
+    officialPosts.push({ source: 'Academy Scout Network', handle: '@AcademyScoutNet', verified: true,
+      text: `Defeat for the team but ${name} gave everything. In a losing side, a ${rating.toFixed(1)} rating tells its own story. Someone will be watching that tape tonight.`, time: 'Match Report' });
+  }
+  officialPosts.push({ source: 'Academy Watch Report', handle: '@AcademyWatchHQ', verified: true,
+    text: `Full-time: ${scoreStr}. ${name} finishes with a ${rating.toFixed(1)} match rating. ${rating >= 7.0 ? 'A performance that will have scouts talking.' : rating >= 6.0 ? 'Showed flashes. Needs consistency.' : 'Tough day. The academy road is long.'}`, time: 'Match Report' });
+
+  // ── BYSTANDER ───────────────────────────────────────────────────────────────
+  const bystanderPosts = [];
+  const handles = ['@lil_scout_99','@futbol_obsessed','@academyrat_uk','@youthwatcher','@grassrootsguy','@scouting_from_home'];
+  const handle = handles[Math.floor(Math.random() * handles.length)];
+  if (goals >= 3) {
+    bystanderPosts.push({ source: 'Fan Post', handle, verified: false,
+      text: `BROOO ${name} just scored a hatrick at the U18 nationals 😭😭 i was there live. the third one was UNREAL. someone sign this kid NOW`, time: `${m.minute - 5}'` });
+  }
+  if (sentOff) {
+    bystanderPosts.push({ source: 'Fan Post', handle, verified: false,
+      text: `ngl ${name} getting a red card today was completely avoidable. was having a decent game too. temper will cost this kid their career if they don't sort it`, time: `${m.minute}'` });
+  }
+  if (ego >= 3 && goals >= 1) {
+    bystanderPosts.push({ source: 'Fan Post', handle, verified: false,
+      text: `${name} today was just different 🤤 the audacity of some of those decisions man. chip the keeper?? at 16?? we don't deserve this kid`, time: `${Math.floor(Math.random() * 30 + 60)}'` });
+  }
+  if (rating < 5.0) {
+    bystanderPosts.push({ source: 'Fan Post', handle, verified: false,
+      text: `rough watch from ${name} today if im being honest. doesn't mean anything at this age but they'll need to have a serious look at themselves in training this week`, time: 'Post-match' });
+  }
+  if (result === 'win' && goals === 0 && assists === 0 && rating >= 6.5) {
+    bystanderPosts.push({ source: 'Fan Post', handle, verified: false,
+      text: `${name} didn't get on the scoresheet today but their movement was causing problems all game. no stats but you could just SEE the quality`, time: 'Post-match' });
+  }
+  bystanderPosts.push({ source: 'Fan Post', handle, verified: false,
+    text: rating >= 7.0
+      ? `was at the nationals today — ${name} looked different from everyone else on that pitch. just something about the way they move`
+      : `${name} had moments today. wasn't the complete performance but you can see what's there. development takes time`, time: 'Post-match' });
+
+  // ── RUMOUR ──────────────────────────────────────────────────────────────────
+  const rumourPosts = [];
+  if (goals >= 2 || rating >= 8.5) {
+    rumourPosts.push({ source: '🔥 Transfer Whispers', handle: '@TransferWhispers_', verified: false,
+      text: `🚨 EXCL: Multiple Premier League academies have already requested footage of ${name} from today's national finals. Nothing concrete yet but the interest is REAL. 👀 #AcademyTransfer`, time: 'Breaking' });
+  }
+  if (sentOff) {
+    rumourPosts.push({ source: '🔥 Transfer Whispers', handle: '@TransferWhispers_', verified: false,
+      text: `SOURCES: The red card incident involving ${name} today is already being discussed in academy circles. Some clubs reportedly cooled interest — others see the fire as a plus. Character assessment ongoing 👀`, time: 'Breaking' });
+  }
+  if (rating >= 7.0 && rating < 8.5) {
+    rumourPosts.push({ source: '🔥 Transfer Whispers', handle: '@TransferWhispers_', verified: false,
+      text: `Hearing that ${name}'s performance today has landed on the desk of at least two Championship academy directors. Not a done deal. But conversations are happening. 🤫`, time: 'Rumour' });
+  }
+  if (rating < 5.5) {
+    rumourPosts.push({ source: '🔥 Transfer Whispers', handle: '@TransferWhispers_', verified: false,
+      text: `${name} had a tough one today. No shame in it — every legend had a bad game at academy level. The real test is what happens next in training. #development`, time: 'Opinion' });
+  }
+  rumourPosts.push({ source: '🔥 Transfer Whispers', handle: '@TransferWhispers_', verified: false,
+    text: goals >= 1
+      ? `The goal${goals > 1 ? 's' : ''} from ${name} today will be in every scout's inbox by tomorrow morning. Academy football moves fast. 🚀`
+      : `${name} — name to remember or flash in the pan? Today's performance will have people forming very different opinions. The journey starts here.`, time: 'Opinion' });
+
+  return [officialPosts[0], bystanderPosts[0], rumourPosts[0]];
+}
+
 // ── POST MATCH ────────────────────────────────────────────────────────────────
 
 export function postMatchScreen() {
@@ -433,6 +605,13 @@ export function postMatchScreen() {
   const headline = generateHeadline(m, p);
 
   const offPitch = generateOffPitchEvent(m, result);
+  const offers = getOffers(m, p);
+  const offersTitle = m.rating >= 9.0 ? 'ELITE CLUBS ARE WATCHING' :
+                      m.rating >= 8.0 ? 'INTEREST FROM PROFESSIONAL CLUBS' :
+                      m.rating >= 6.0 ? 'LOCAL CLUBS HAVE MADE CONTACT' :
+                      m.rating >= 4.0 ? 'LOWER LEAGUE INTEREST' :
+                                        'NON-LEAGUE OFFERS';
+  const socialPosts = generateSocialFeed(m, p);
 
   return `
 <div class="screen post-match-screen animate__animated animate__fadeIn">
@@ -463,6 +642,37 @@ export function postMatchScreen() {
   <div class="pm-manager">
     <div class="pm-manager-label">MANAGER</div>
     <div class="pm-manager-quote">${managerQuote}</div>
+  </div>
+
+  <div class="pm-offers">
+    <div class="pm-offers-label">${offersTitle}</div>
+    ${offers.map(o => `
+      <div class="pm-offer-card">
+        <div class="pm-offer-badge">${o.badge}</div>
+        <div class="pm-offer-info">
+          <div class="pm-offer-name">${o.name}</div>
+          <div class="pm-offer-league">${o.league}</div>
+        </div>
+        <div class="pm-offer-action">VIEW OFFER →</div>
+      </div>
+    `).join('')}
+  </div>
+
+  <div class="pm-social-feed">
+    <div class="pm-social-label">SOCIAL FEED</div>
+    ${socialPosts.map(post => `
+      <div class="pm-post">
+        <div class="pm-post-header">
+          <div class="pm-post-avatar">${post.verified ? '🔵' : '💬'}</div>
+          <div class="pm-post-meta">
+            <div class="pm-post-source">${post.source} ${post.verified ? '✓' : ''}</div>
+            <div class="pm-post-handle">${post.handle}</div>
+          </div>
+          <div class="pm-post-time">${post.time}</div>
+        </div>
+        <div class="pm-post-text">${post.text}</div>
+      </div>
+    `).join('')}
   </div>
 
   <div class="pm-offpitch">
@@ -569,4 +779,201 @@ function generateOffPitchEvent(m, result) {
       { label: 'Say nothing — focus.', effect: '+Form Modifier' },
     ],
   };
+}
+
+// ── BACKGROUND SYSTEM ────────────────────────────────────────────────────────
+
+function statModsPreview(mods) {
+  return Object.entries(mods).map(([k, v]) => {
+    const label = formatStatName(k);
+    const sign = v > 0 ? '+' : '';
+    const cls = v > 0 ? 'smod-pos' : 'smod-neg';
+    return `<span class="${cls}">${sign}${v} ${label}</span>`;
+  }).join('');
+}
+
+function miniStatBar(label, val) {
+  const pct = ((val - 42) / 30) * 100;
+  const col = val >= 65 ? '#ffd700' : val >= 58 ? '#4ade80' : '#60a5fa';
+  return `
+    <div class="spm-row">
+      <span class="spm-label">${label}</span>
+      <div class="spm-track"><div class="spm-fill" style="width:${Math.min(100,Math.max(0,pct))}%;background:${col}"></div></div>
+      <span class="spm-val">${val}</span>
+    </div>`;
+}
+
+function statPreviewPanel() {
+  const s = GameState.player.stats;
+  const rows = [
+    ['PAC', s.pace || 0], ['DRI', s.dribbling || 0], ['FIN', s.finishing || 0],
+    ['PAS', s.passing || 0], ['PHY', s.physicality || 0], ['HEA', s.heading || 0],
+  ];
+  return `
+    <div class="stat-preview-mini">
+      <div class="spm-title">YOUR STATS</div>
+      ${rows.map(([l, v]) => miniStatBar(l, v)).join('')}
+    </div>`;
+}
+
+export function backgroundStep1Screen() {
+  return `
+<div class="screen bg-screen animate__animated animate__fadeIn">
+  <div class="bg-header">
+    <div class="badge">BACKGROUND</div>
+    <h2 class="bg-title">WHERE DID YOU COME FROM?</h2>
+    <p class="bg-subtitle">Your background shapes who you are before you ever kick a ball.</p>
+  </div>
+  <div class="bg-body">
+    <div class="bg-choices" id="bg1-choices">
+      ${BACKGROUNDS.map(b => `
+        <button class="bg-choice-btn" data-bg="${b.id}">
+          <div class="bgc-top">
+            <span class="bgc-icon">${b.icon}</span>
+            <div class="bgc-info">
+              <div class="bgc-label">${b.label}</div>
+              <div class="bgc-desc">${b.desc}</div>
+            </div>
+          </div>
+          <div class="bgc-flavour">${b.flavour}</div>
+          <div class="bgc-mods">${statModsPreview(b.statMods)}</div>
+        </button>
+      `).join('')}
+    </div>
+    ${statPreviewPanel()}
+  </div>
+</div>`;
+}
+
+export function backgroundStep2Screen() {
+  return `
+<div class="screen bg-screen animate__animated animate__fadeIn">
+  <div class="bg-header">
+    <div class="badge">BACKGROUND</div>
+    <h2 class="bg-title">IN SCHOOL, YOU...</h2>
+    <p class="bg-subtitle">How you spent your time shaped how you think.</p>
+  </div>
+  <div class="bg-body">
+    <div class="bg-choices" id="bg2-choices">
+      ${SCHOOL_FOCUS.map(s => `
+        <button class="bg-choice-btn" data-school="${s.id}">
+          <div class="bgc-top">
+            <span class="bgc-icon">${s.icon}</span>
+            <div class="bgc-info">
+              <div class="bgc-label">${s.label}</div>
+              <div class="bgc-desc">${s.desc}</div>
+            </div>
+          </div>
+          <div class="bgc-mods">${statModsPreview(s.statMods)}</div>
+        </button>
+      `).join('')}
+    </div>
+    ${statPreviewPanel()}
+  </div>
+</div>`;
+}
+
+export function youthEventScreen(eventDef) {
+  return `
+<div class="screen youth-event-screen animate__animated animate__fadeIn">
+  <div class="ye-eyebrow">${eventDef.letter} — YOUTH EVENT</div>
+  <div class="ye-title">${eventDef.title}</div>
+  <div class="ye-narrative">${eventDef.narrative}</div>
+  <div class="ye-choices" id="ye-choices">
+    ${eventDef.choices.map(c => `
+      <button class="ye-choice-btn" data-choice="${c.id}">
+        <div class="ye-choice-label">${c.label}</div>
+        <div class="ye-choice-desc">${c.desc}</div>
+        <div class="bgc-mods">${statModsPreview(c.statMods)}</div>
+      </button>
+    `).join('')}
+  </div>
+  ${statPreviewPanel()}
+</div>`;
+}
+
+export function youthEventResultScreen(eventDef, choiceId) {
+  const choice = eventDef.choices.find(c => c.id === choiceId);
+  return `
+<div class="screen youth-result-screen animate__animated animate__fadeIn">
+  <div class="ye-eyebrow">${eventDef.letter} — YOUTH EVENT</div>
+  <div class="ye-title">${eventDef.title}</div>
+  <div class="yr-result">${choice?.result || ''}</div>
+  <div class="yr-mods">${statModsPreview(choice?.statMods || {})}</div>
+  ${statPreviewPanel()}
+  <button class="cta-btn yr-continue-btn" id="yr-continue-btn">Continue →</button>
+</div>`;
+}
+
+function renderFormationPitch(playerPosition, playerName, nationality) {
+  const names = NATIONALITY_NAMES[nationality] || NATIONALITY_NAMES.default;
+  let nameIdx = 0;
+  const getTeammateName = () => names[nameIdx++ % names.length];
+
+  const playerSpot = POSITION_MAP[playerPosition] || 'ST';
+  const spots = Object.entries(FORMATION_433);
+
+  const circles = spots.map(([key, pos]) => {
+    const isPlayer = key === playerSpot;
+    const name = isPlayer ? playerName : getTeammateName();
+    const cx = (pos.x / 100) * 280;
+    const cy = (pos.y / 100) * 380;
+    return `
+      <g>
+        <circle cx="${cx}" cy="${cy}" r="${isPlayer ? 14 : 10}"
+          fill="${isPlayer ? '#e8ff47' : 'rgba(255,255,255,0.85)'}"
+          stroke="${isPlayer ? '#000' : 'rgba(0,0,0,0.3)'}"
+          stroke-width="${isPlayer ? 2 : 1}"/>
+        ${isPlayer ? `<text x="${cx}" y="${cy + 4}" text-anchor="middle"
+          fill="#000" font-size="7" font-weight="bold"
+          font-family="Barlow Condensed, sans-serif">YOU</text>` : ''}
+        <text x="${cx}" y="${cy + (isPlayer ? 28 : 23)}"
+          text-anchor="middle"
+          fill="${isPlayer ? '#e8ff47' : 'rgba(255,255,255,0.65)'}"
+          font-size="${isPlayer ? '8' : '7'}"
+          font-weight="${isPlayer ? 'bold' : 'normal'}"
+          font-family="Barlow Condensed, sans-serif">
+          ${isPlayer ? name.toUpperCase() : name}
+        </text>
+      </g>`;
+  }).join('');
+
+  return `
+    <svg viewBox="0 0 280 380" xmlns="http://www.w3.org/2000/svg"
+         style="width:100%;max-width:280px;margin:0 auto;display:block">
+      <rect width="280" height="380" fill="#2d5a1b" rx="8"/>
+      ${Array.from({length:7},(_,i)=>`<rect x="${i*40}" y="0" width="40" height="380" fill="rgba(0,0,0,${i%2===0?'0.06':'0'})"/>`).join('')}
+      <rect x="14" y="14" width="252" height="352" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" rx="2"/>
+      <line x1="14" y1="190" x2="266" y2="190" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+      <circle cx="140" cy="190" r="35" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>
+      <rect x="70" y="14" width="140" height="55" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+      <rect x="70" y="311" width="140" height="55" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+      <rect x="105" y="6" width="70" height="14" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+      <rect x="105" y="360" width="70" height="14" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+      ${circles}
+    </svg>`;
+}
+
+export function academyXIScreen() {
+  const p = GameState.player;
+  const nation = NATIONS.find(n => n.id === p.nationality);
+  const countryName = nation?.name || 'National';
+  const pitch = renderFormationPitch(p.position, p.name, p.nationality);
+
+  return `
+<div class="screen academy-xi-screen animate__animated animate__fadeIn">
+  <div class="axi-header">
+    <img class="axi-flag-img" src="https://flagcdn.com/w80/${nation?.code || 'un'}.png" alt="${countryName}">
+    <div class="axi-eyebrow">${countryName} Under-18 National Finals</div>
+    <div class="axi-title">${p.name.toUpperCase()}</div>
+    <div class="axi-subtitle">You've made the starting XI</div>
+  </div>
+  <div class="axi-formation-label">4 — 3 — 3</div>
+  <div class="axi-pitch-wrap">${pitch}</div>
+  <div class="axi-manager-quote">
+    <div class="axi-mgr-text">"You've earned this. Now go show them what you're made of."</div>
+    <div class="axi-mgr-name">Academy Director</div>
+  </div>
+  <button class="cta-btn axi-kick-btn" id="kick-off-btn">⚽ KICK OFF</button>
+</div>`;
 }

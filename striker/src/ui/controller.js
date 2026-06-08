@@ -10,7 +10,9 @@ import { CELEBRATIONS, OPPOSITION_EVENTS } from '../data/events_flavor.js';
 import {
   creationScreen, statCardScreen, matchHUD, matchFeedPanel,
   eventScreen, outcomeScreen, weaponDiscoveryScreen, postMatchScreen, debugPanel,
+  backgroundStep1Screen, backgroundStep2Screen, youthEventScreen, youthEventResultScreen, academyXIScreen,
 } from './screens.js';
+import { BACKGROUNDS, SCHOOL_FOCUS, YOUTH_EVENTS } from '../data/background.js';
 
 const app = document.getElementById('app');
 const debugEl = document.getElementById('debug-container');
@@ -93,7 +95,7 @@ function showCreation() {
   btn.addEventListener('click', () => {
     if (btn.disabled) return;
     buildPlayer(sel);
-    showStatCard();
+    showBackgroundStep1();
   });
 }
 
@@ -126,6 +128,94 @@ function buildPlayer(sel) {
 function showStatCard() {
   app.innerHTML = statCardScreen();
   document.getElementById('start-match-btn').addEventListener('click', () => {
+    showAcademyXI();
+  });
+}
+
+// ── BACKGROUND SYSTEM ─────────────────────────────────────────────────────────
+
+const STAT_KEY_MAP = {
+  ballControl: 'ball_control',
+  shortPassing: 'passing',
+  longPassing: 'passing',
+};
+
+function applyStatMods(mods) {
+  const stats = GameState.player.stats;
+  if (!GameState.player.backgroundMods) GameState.player.backgroundMods = {};
+  const bg = GameState.player.backgroundMods;
+  for (const [rawKey, val] of Object.entries(mods)) {
+    const key = STAT_KEY_MAP[rawKey] || rawKey;
+    stats[key] = Math.max(42, Math.min(72, (stats[key] || 50) + val));
+    bg[key] = (bg[key] || 0) + val;
+  }
+  recalcOverall();
+}
+
+function recalcOverall() {
+  const primary = ['pace','dribbling','finishing','passing','physicality','heading'];
+  const stats = GameState.player.stats;
+  GameState.player.overall = Math.round(primary.reduce((s, k) => s + (stats[k] || 50), 0) / primary.length);
+}
+
+function pickYouthEvents() {
+  const pool = [...YOUTH_EVENTS].sort(() => Math.random() - 0.5);
+  return [pool[0], pool[1]];
+}
+
+function showBackgroundStep1() {
+  GameState.youthEventQueue = pickYouthEvents();
+  app.innerHTML = backgroundStep1Screen();
+  document.getElementById('bg1-choices').addEventListener('click', e => {
+    const btn = e.target.closest('[data-bg]');
+    if (!btn) return;
+    const bg = BACKGROUNDS.find(b => b.id === btn.dataset.bg);
+    if (!bg) return;
+    applyStatMods(bg.statMods);
+    showBackgroundStep2();
+  });
+}
+
+function showBackgroundStep2() {
+  app.innerHTML = backgroundStep2Screen();
+  document.getElementById('bg2-choices').addEventListener('click', e => {
+    const btn = e.target.closest('[data-school]');
+    if (!btn) return;
+    const school = SCHOOL_FOCUS.find(s => s.id === btn.dataset.school);
+    if (!school) return;
+    applyStatMods(school.statMods);
+    showYouthEvent(0);
+  });
+}
+
+function showYouthEvent(idx) {
+  const eventDef = GameState.youthEventQueue[idx];
+  if (!eventDef) { showStatCard(); return; }
+  app.innerHTML = youthEventScreen(eventDef);
+  document.getElementById('ye-choices').addEventListener('click', e => {
+    const btn = e.target.closest('[data-choice]');
+    if (!btn) return;
+    const choice = eventDef.choices.find(c => c.id === btn.dataset.choice);
+    if (!choice) return;
+    applyStatMods(choice.statMods);
+    showYouthEventResult(eventDef, choice.id, idx);
+  });
+}
+
+function showYouthEventResult(eventDef, choiceId, idx) {
+  app.innerHTML = youthEventResultScreen(eventDef, choiceId);
+  document.getElementById('yr-continue-btn').addEventListener('click', () => {
+    if (idx < 1) {
+      showYouthEvent(1);
+    } else {
+      showStatCard();
+    }
+  });
+}
+
+function showAcademyXI() {
+  app.innerHTML = academyXIScreen();
+  document.getElementById('kick-off-btn').addEventListener('click', () => {
     startMatch();
   });
 }
@@ -134,6 +224,8 @@ function showStatCard() {
 
 function startMatch() {
   GameState.match.minute = 0;
+  GameState.match.minEvents = 5;
+  GameState.match.eventsThisMatch = 0;
   renderMatch();
   scheduleA6Check();
   runMatchTick();
@@ -263,6 +355,7 @@ function runMatchTick() {
 
 function triggerEvent(eventDef) {
   if (!eventDef) { runMatchTick(); return; }
+  GameState.match.eventsThisMatch = (GameState.match.eventsThisMatch || 0) + 1;
   pendingEventDef = eventDef;
   const choices = EventEngine.filterChoices(eventDef);
   app.innerHTML = `
@@ -415,9 +508,7 @@ function giveCard(type) {
     }
     // Show yellow card notification inline then resume
     m.feed.push(`🟨 YELLOW CARD — ${GameState.player.name} is booked. ${m.minute}'. One more and you're off.`);
-    refreshFeed();
-    refreshHUD();
-    matchTimer = setTimeout(runMatchTick, 1200);
+    returnToMatch();
     return;
   }
 
@@ -568,16 +659,17 @@ function showCelebrationScreen() {
     if (!btn) return;
     const cel = CELEBRATIONS.find(c => c.id === btn.dataset.cel);
     if (!cel) return;
-    if (cel.yellowCardRisk) {
-      GameState.match.yellows = (GameState.match.yellows || 0) + 1;
-      GameState.match.feed.push('🟨 Yellow card for the celebration!');
-    }
     if (cel.ratingBonus) {
       GameState.match.rating = Math.max(1, Math.min(10,
         GameState.match.rating + cel.ratingBonus
       ));
     }
     GameState.match.feed.push(`🎉 ${cel.narrative}`);
+    if (cel.yellowCardRisk) {
+      // giveCard handles yellow→red promotion automatically
+      giveCard('yellow');
+      return;
+    }
     returnToMatch();
   });
 }

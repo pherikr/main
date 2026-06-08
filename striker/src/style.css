@@ -559,3 +559,91 @@ input[type="text"]::placeholder { color: var(--muted); }
 .og-icon  { font-size: 52px; margin-bottom: 10px; }
 .og-score { font-family: 'Bebas Neue', sans-serif; font-size: 58px; color: #ef4444; line-height: 1; margin-bottom: 14px; }
 .og-narrative { font-size: 15px; color: rgba(255,255,255,0.6); text-align: center; max-width: 280px; line-height: 1.6; font-style: italic; }
+
+/* ── BACKGROUND SCREENS ─────────────────────────────────────────────────── */
+
+.bg-screen { display: flex; flex-direction: column; padding: 24px 20px 40px; min-height: 100%; background: var(--bg); }
+.bg-header { margin-bottom: 20px; }
+.bg-title { font-family: 'Bebas Neue', sans-serif; font-size: 28px; color: #fff; letter-spacing: 0.04em; margin: 6px 0 4px; line-height: 1.1; }
+.bg-subtitle { font-size: 13px; color: var(--muted); line-height: 1.5; }
+.bg-body { display: flex; flex-direction: column; gap: 16px; }
+.bg-choices { display: flex; flex-direction: column; gap: 10px; }
+.bg-choice-btn { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; cursor: pointer; color: var(--text); text-align: left; transition: border-color 0.15s, background 0.15s; }
+.bg-choice-btn:hover { border-color: rgba(232,255,71,0.5); background: rgba(232,255,71,0.04); }
+.bg-choice-btn:active { border-color: #e8ff47; background: rgba(232,255,71,0.08); }
+.bgc-top { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 6px; }
+.bgc-icon { font-size: 22px; flex-shrink: 0; margin-top: 2px; }
+.bgc-info { flex: 1; }
+.bgc-label { font-family: 'Bebas Neue', sans-serif; font-size: 17px; letter-spacing: 0.04em; color: #fff; }
+.bgc-desc { font-size: 12px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
+.bgc-flavour { font-size: 11px; color: rgba(255,255,255,0.3); font-style: italic; margin-bottom: 8px; line-height: 1.4; }
+.bgc-mods { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.smod-pos { font-size: 11px; font-weight: 700; color: #4ade80; background: rgba(74,222,128,0.1); border-radius: 4px; padding: 2px 6px; font-family: 'Barlow Condensed', sans-serif; letter-spacing: 0.04em; }
+.smod-neg { font-size: 11px; font-weight: 700; color: #f87171; background: rgba(248,113,113,0.1); border-radius: 4px; padding: 2px 6px; font-family: 'Barlow Condensed', sans-serif; letter-spacing: 0.04em; }
+
+/* Stat preview mini panel */
+.stat-preview-mini { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; }
+.spm-title { font-size: 9px; letter-spacing: 0.14em; color: var(--muted); text-transform: uppercase; font-weight: 700; margin-bottom: 8px; font-family: 'Barlow Condensed', sans-serif; }
+.spm-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+.spm-label { font-size: 10px; color: var(--muted); width: 28px; flex-shrink: 0; letter-spacing: 0.06em; font-family: 'Barlow Condensed', sans-serif; font-weight: 600; }
+.spm-track { flex: 1; height: 4px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden; }
+.spm-fill { height: 100%; border-radius: 2px; transition: width 0.4s ease; }
+.spm-val { font-size: 11px; font-weight: 700; width: 20px; text-align: right; color: var(--text); }
+
+/* ── YOUTH EVENT SCREEN ─────────────────────────────────────────────────── */
+
+.youth-event-screen { display: flex; flex-direction: column; padding: 24px 20px 40px; min-height: 100%; }
+.ye-eyebrow { font-size: 10px; letter-spacing: 0.18em; color: var(--accent); text-transform: uppercase; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; margin-bottom: 8px; }
+.ye-title { font-family: 'Bebas Neue', sans-serif; font-size: 24px; color: #fff; letter-spacing: 0.04em; margin-bottom: 14px; }
+.ye-narrative { font-size: 14px; color: rgba(255,255,255,0.65); line-height: 1.7; margin-bottom: 22px; background: rgba(255,255,255,0.03); border-left: 2px solid var(--accent); border-radius: 0 8px 8px 0; padding: 12px 14px; }
+.ye-choices { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+.ye-choice-btn { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; cursor: pointer; color: var(--text); text-align: left; transition: border-color 0.15s, background 0.15s; }
+.ye-choice-btn:hover { border-color: rgba(232,255,71,0.5); background: rgba(232,255,71,0.04); }
+.ye-choice-btn:active { border-color: #e8ff47; }
+.ye-choice-label { font-family: 'Bebas Neue', sans-serif; font-size: 16px; letter-spacing: 0.04em; color: #fff; margin-bottom: 4px; }
+.ye-choice-desc { font-size: 12px; color: var(--muted); margin-bottom: 6px; line-height: 1.4; }
+
+/* Youth event result */
+.youth-result-screen { display: flex; flex-direction: column; padding: 24px 20px 40px; min-height: 100%; }
+.yr-result { font-size: 15px; color: rgba(255,255,255,0.75); line-height: 1.7; margin: 20px 0 16px; background: rgba(255,255,255,0.04); border-left: 3px solid #e8ff47; border-radius: 0 8px 8px 0; padding: 14px 16px; }
+.yr-mods { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 20px; }
+.yr-continue-btn { margin-top: auto; }
+
+/* ── ACADEMY XI ─────────────────────────────────────────────────────────── */
+
+.academy-xi-screen { display: flex; flex-direction: column; align-items: center; padding: 24px 20px 32px; min-height: 100%; background: radial-gradient(ellipse at 50% 0%, #1a3a0a, #0b0c0f 60%); overflow-y: auto; }
+.axi-header { text-align: center; margin-bottom: 12px; }
+.axi-flag-img { width: 60px; height: 40px; border-radius: 4px; object-fit: cover; display: block; margin: 0 auto 8px; }
+.axi-eyebrow { font-size: 10px; color: rgba(255,255,255,0.4); letter-spacing: 0.18em; text-transform: uppercase; font-family: 'Barlow Condensed', sans-serif; margin-bottom: 4px; }
+.axi-title { font-family: 'Bebas Neue', sans-serif; font-size: 40px; color: #e8ff47; line-height: 1; }
+.axi-subtitle { font-size: 14px; color: rgba(255,255,255,0.5); margin-top: 4px; font-family: 'Barlow Condensed', sans-serif; }
+.axi-formation-label { font-family: 'Bebas Neue', sans-serif; font-size: 18px; color: rgba(255,255,255,0.3); letter-spacing: 0.2em; margin-bottom: 10px; }
+.axi-pitch-wrap { width: 100%; max-width: 280px; margin-bottom: 20px; }
+.axi-manager-quote { background: rgba(255,255,255,0.04); border-left: 3px solid #e8ff47; border-radius: 0 8px 8px 0; padding: 12px 14px; margin-bottom: 20px; width: 100%; max-width: 280px; }
+.axi-mgr-text { font-size: 14px; color: rgba(255,255,255,0.7); font-style: italic; line-height: 1.5; margin-bottom: 5px; }
+.axi-mgr-name { font-size: 10px; color: rgba(255,255,255,0.3); letter-spacing: 0.08em; text-transform: uppercase; font-family: 'Barlow Condensed', sans-serif; }
+.axi-kick-btn { width: 100%; max-width: 280px; font-size: 20px; padding: 16px; }
+
+/* ── CLUB OFFERS ────────────────────────────────────────────────────────── */
+
+.pm-offers { padding: 16px 20px; border-top: 0.5px solid rgba(255,255,255,0.06); }
+.pm-offers-label { font-size: 9px; letter-spacing: .16em; text-transform: uppercase; color: rgba(255,255,255,0.3); font-family: 'Barlow Condensed', sans-serif; font-weight: 600; margin-bottom: 10px; }
+.pm-offer-card { display: flex; align-items: center; gap: 12px; padding: 12px; background: rgba(255,255,255,0.04); border: 0.5px solid rgba(255,255,255,0.08); border-radius: 10px; margin-bottom: 8px; }
+.pm-offer-badge { font-size: 24px; width: 36px; text-align: center; flex-shrink: 0; }
+.pm-offer-info { flex: 1; }
+.pm-offer-name { font-family: 'Barlow Condensed', sans-serif; font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #f0ede6; }
+.pm-offer-league { font-size: 11px; color: rgba(255,255,255,0.35); margin-top: 2px; }
+.pm-offer-action { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: .08em; color: #e8ff47; flex-shrink: 0; }
+
+/* ── SOCIAL FEED ────────────────────────────────────────────────────────── */
+
+.pm-social-feed { padding: 16px 20px 32px; border-top: 0.5px solid rgba(255,255,255,0.06); }
+.pm-social-label { font-size: 9px; letter-spacing: .16em; text-transform: uppercase; color: rgba(255,255,255,0.3); font-family: 'Barlow Condensed', sans-serif; font-weight: 600; margin-bottom: 12px; }
+.pm-post { background: rgba(255,255,255,0.03); border: 0.5px solid rgba(255,255,255,0.07); border-radius: 10px; padding: 14px; margin-bottom: 10px; }
+.pm-post-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.pm-post-avatar { font-size: 20px; flex-shrink: 0; }
+.pm-post-meta { flex: 1; }
+.pm-post-source { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; color: #f0ede6; letter-spacing: .02em; }
+.pm-post-handle { font-size: 11px; color: rgba(255,255,255,0.35); margin-top: 1px; }
+.pm-post-time { font-size: 10px; color: rgba(255,255,255,0.25); font-family: 'Barlow Condensed', sans-serif; flex-shrink: 0; }
+.pm-post-text { font-size: 13px; color: rgba(255,255,255,0.7); line-height: 1.55; }

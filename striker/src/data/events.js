@@ -650,8 +650,8 @@ export const EVENTS = {
         yourStats: ['intelligence', 'composure'],
         oppStats: ['physicality', 'positioning'],
         // Dive: only appears if intelligence >= 58 AND physicality <= 54 (weak player = more convincing)
-        statGate: { stat: 'intelligence', min: 58 },
-        diveGate: { playerPhysMax: 54 }, // controller checks this separately
+        statGate: { stat: 'intelligence', min: 48 },
+        diveGate: { playerPhysMax: 62 }, // controller checks this separately
         weaponBoost: [],
         smartBonus: false,
         isDive: true,
@@ -912,8 +912,8 @@ export const EVENTS = {
         isEgo: true,
         yourStats: ['intelligence', 'composure'],
         oppStats: ['gk_composure', 'positioning'],
-        statGate: { stat: 'intelligence', min: 58 },
-        diveGate: { playerPhysMax: 54 },
+        statGate: { stat: 'intelligence', min: 48 },
+        diveGate: { playerPhysMax: 62 },
         weaponBoost: [],
         smartBonus: false,
         isDive: true,

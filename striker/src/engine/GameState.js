@@ -10,6 +10,7 @@ export const GameState = {
     weapon: null,   // weapon id or 'discover'
     stats: {},
     overall: 0,
+    backgroundMods: {},
   },
 
   // Match
@@ -24,6 +25,8 @@ export const GameState = {
     confidence: 50,        // 0–100
     formModifier: 0,       // -2 to +2
     eventsResolved: 0,
+    eventsThisMatch: 0,
+    minEvents: 5,
     goals: 0,
     assists: 0,
     weaponDiscovered: false,
@@ -44,6 +47,8 @@ export const GameState = {
     shotsOnTarget: 0,
     shotsMissed: 0,
     keeperAdvanced: false,
+    refEventFired: false,
+    managerHalftimeFired: false,
     managerTrackBackFired: false,
     managerPraiseFired: false,
     benchShown: false,
@@ -95,6 +100,8 @@ export const GameState = {
       confidence: 50,
       formModifier: 0,
       eventsResolved: 0,
+      eventsThisMatch: 0,
+      minEvents: 5,
       goals: 0,
       assists: 0,
       weaponDiscovered: false,
@@ -115,10 +122,12 @@ export const GameState = {
       shotsOnTarget: 0,
       shotsMissed: 0,
       keeperAdvanced: false,
+      refEventFired: false,
+      managerHalftimeFired: false,
       managerTrackBackFired: false,
       managerPraiseFired: false,
       benchShown: false,
-        oppGoalJustScored: false,
+      oppGoalJustScored: false,
       lastOppGoalNarrative: '',
     };
     this.debug.rolls = [];
