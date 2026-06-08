@@ -283,12 +283,22 @@ function pickChanceType(position) {
 }
 
 function calcInvolvementChance(chanceType, m, p) {
-  let base = 40;
-  const wrMod = { low: -20, medium: 0, high: 25 }[m.workRate];
+  const minutesLeft = 90 - m.minute;
+  const minEventsLeft = Math.max(0, (m.minEvents || 5) - (m.eventsThisMatch || 0));
+
+  let base = { low: 28, medium: 42, high: 62 }[m.workRate] || 42;
+
   const scoreDiff = m.score.us - m.score.them;
-  const urgencyMod = scoreDiff < 0 ? 15 : 0;
-  const staminaPenalty = m.stamina < 40 ? -10 : 0;
-  return Math.min(90, Math.max(5, base + wrMod + urgencyMod + staminaPenalty));
+  if (scoreDiff < 0) base += 12;
+
+  if (m.stamina < 40) base -= 10;
+  if (m.stamina < 20) base -= 10;
+
+  if (minEventsLeft > 0 && minutesLeft <= minEventsLeft * 12) {
+    base = Math.max(base, 75);
+  }
+
+  return Math.min(88, Math.max(5, base));
 }
 
 function resolveBackground(chanceType, minute) {

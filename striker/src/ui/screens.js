@@ -2,6 +2,7 @@
 
 import { NATIONS } from '../data/nations.js';
 import { PROFILES } from '../data/profiles.js';
+import { BACKGROUNDS, SCHOOL_FOCUS, YOUTH_EVENTS, NATIONALITY_NAMES, FORMATION_433, POSITION_MAP } from '../data/background.js';
 import { WEAPONS, DISCOVER_OPTION } from '../data/weapons.js';
 import { GameState } from '../engine/GameState.js';
 import { RatingEngine } from '../engine/RatingEngine.js';
@@ -569,4 +570,201 @@ function generateOffPitchEvent(m, result) {
       { label: 'Say nothing — focus.', effect: '+Form Modifier' },
     ],
   };
+}
+
+// ── BACKGROUND SYSTEM ────────────────────────────────────────────────────────
+
+function statModsPreview(mods) {
+  return Object.entries(mods).map(([k, v]) => {
+    const label = formatStatName(k);
+    const sign = v > 0 ? '+' : '';
+    const cls = v > 0 ? 'smod-pos' : 'smod-neg';
+    return `<span class="${cls}">${sign}${v} ${label}</span>`;
+  }).join('');
+}
+
+function miniStatBar(label, val) {
+  const pct = ((val - 42) / 30) * 100;
+  const col = val >= 65 ? '#ffd700' : val >= 58 ? '#4ade80' : '#60a5fa';
+  return `
+    <div class="spm-row">
+      <span class="spm-label">${label}</span>
+      <div class="spm-track"><div class="spm-fill" style="width:${Math.min(100,Math.max(0,pct))}%;background:${col}"></div></div>
+      <span class="spm-val">${val}</span>
+    </div>`;
+}
+
+function statPreviewPanel() {
+  const s = GameState.player.stats;
+  const rows = [
+    ['PAC', s.pace || 0], ['DRI', s.dribbling || 0], ['FIN', s.finishing || 0],
+    ['PAS', s.passing || 0], ['PHY', s.physicality || 0], ['HEA', s.heading || 0],
+  ];
+  return `
+    <div class="stat-preview-mini">
+      <div class="spm-title">YOUR STATS</div>
+      ${rows.map(([l, v]) => miniStatBar(l, v)).join('')}
+    </div>`;
+}
+
+export function backgroundStep1Screen() {
+  return `
+<div class="screen bg-screen animate__animated animate__fadeIn">
+  <div class="bg-header">
+    <div class="badge">BACKGROUND</div>
+    <h2 class="bg-title">WHERE DID YOU COME FROM?</h2>
+    <p class="bg-subtitle">Your background shapes who you are before you ever kick a ball.</p>
+  </div>
+  <div class="bg-body">
+    <div class="bg-choices" id="bg1-choices">
+      ${BACKGROUNDS.map(b => `
+        <button class="bg-choice-btn" data-bg="${b.id}">
+          <div class="bgc-top">
+            <span class="bgc-icon">${b.icon}</span>
+            <div class="bgc-info">
+              <div class="bgc-label">${b.label}</div>
+              <div class="bgc-desc">${b.desc}</div>
+            </div>
+          </div>
+          <div class="bgc-flavour">${b.flavour}</div>
+          <div class="bgc-mods">${statModsPreview(b.statMods)}</div>
+        </button>
+      `).join('')}
+    </div>
+    ${statPreviewPanel()}
+  </div>
+</div>`;
+}
+
+export function backgroundStep2Screen() {
+  return `
+<div class="screen bg-screen animate__animated animate__fadeIn">
+  <div class="bg-header">
+    <div class="badge">BACKGROUND</div>
+    <h2 class="bg-title">IN SCHOOL, YOU...</h2>
+    <p class="bg-subtitle">How you spent your time shaped how you think.</p>
+  </div>
+  <div class="bg-body">
+    <div class="bg-choices" id="bg2-choices">
+      ${SCHOOL_FOCUS.map(s => `
+        <button class="bg-choice-btn" data-school="${s.id}">
+          <div class="bgc-top">
+            <span class="bgc-icon">${s.icon}</span>
+            <div class="bgc-info">
+              <div class="bgc-label">${s.label}</div>
+              <div class="bgc-desc">${s.desc}</div>
+            </div>
+          </div>
+          <div class="bgc-mods">${statModsPreview(s.statMods)}</div>
+        </button>
+      `).join('')}
+    </div>
+    ${statPreviewPanel()}
+  </div>
+</div>`;
+}
+
+export function youthEventScreen(eventDef) {
+  return `
+<div class="screen youth-event-screen animate__animated animate__fadeIn">
+  <div class="ye-eyebrow">${eventDef.letter} — YOUTH EVENT</div>
+  <div class="ye-title">${eventDef.title}</div>
+  <div class="ye-narrative">${eventDef.narrative}</div>
+  <div class="ye-choices" id="ye-choices">
+    ${eventDef.choices.map(c => `
+      <button class="ye-choice-btn" data-choice="${c.id}">
+        <div class="ye-choice-label">${c.label}</div>
+        <div class="ye-choice-desc">${c.desc}</div>
+        <div class="bgc-mods">${statModsPreview(c.statMods)}</div>
+      </button>
+    `).join('')}
+  </div>
+  ${statPreviewPanel()}
+</div>`;
+}
+
+export function youthEventResultScreen(eventDef, choiceId) {
+  const choice = eventDef.choices.find(c => c.id === choiceId);
+  return `
+<div class="screen youth-result-screen animate__animated animate__fadeIn">
+  <div class="ye-eyebrow">${eventDef.letter} — YOUTH EVENT</div>
+  <div class="ye-title">${eventDef.title}</div>
+  <div class="yr-result">${choice?.result || ''}</div>
+  <div class="yr-mods">${statModsPreview(choice?.statMods || {})}</div>
+  ${statPreviewPanel()}
+  <button class="cta-btn yr-continue-btn" id="yr-continue-btn">Continue →</button>
+</div>`;
+}
+
+function renderFormationPitch(playerPosition, playerName, nationality) {
+  const names = NATIONALITY_NAMES[nationality] || NATIONALITY_NAMES.default;
+  let nameIdx = 0;
+  const getTeammateName = () => names[nameIdx++ % names.length];
+
+  const playerSpot = POSITION_MAP[playerPosition] || 'ST';
+  const spots = Object.entries(FORMATION_433);
+
+  const circles = spots.map(([key, pos]) => {
+    const isPlayer = key === playerSpot;
+    const name = isPlayer ? playerName : getTeammateName();
+    const cx = (pos.x / 100) * 280;
+    const cy = (pos.y / 100) * 380;
+    return `
+      <g>
+        <circle cx="${cx}" cy="${cy}" r="${isPlayer ? 14 : 10}"
+          fill="${isPlayer ? '#e8ff47' : 'rgba(255,255,255,0.85)'}"
+          stroke="${isPlayer ? '#000' : 'rgba(0,0,0,0.3)'}"
+          stroke-width="${isPlayer ? 2 : 1}"/>
+        ${isPlayer ? `<text x="${cx}" y="${cy + 4}" text-anchor="middle"
+          fill="#000" font-size="7" font-weight="bold"
+          font-family="Barlow Condensed, sans-serif">YOU</text>` : ''}
+        <text x="${cx}" y="${cy + (isPlayer ? 28 : 23)}"
+          text-anchor="middle"
+          fill="${isPlayer ? '#e8ff47' : 'rgba(255,255,255,0.65)'}"
+          font-size="${isPlayer ? '8' : '7'}"
+          font-weight="${isPlayer ? 'bold' : 'normal'}"
+          font-family="Barlow Condensed, sans-serif">
+          ${isPlayer ? name.toUpperCase() : name}
+        </text>
+      </g>`;
+  }).join('');
+
+  return `
+    <svg viewBox="0 0 280 380" xmlns="http://www.w3.org/2000/svg"
+         style="width:100%;max-width:280px;margin:0 auto;display:block">
+      <rect width="280" height="380" fill="#2d5a1b" rx="8"/>
+      ${Array.from({length:7},(_,i)=>`<rect x="${i*40}" y="0" width="40" height="380" fill="rgba(0,0,0,${i%2===0?'0.06':'0'})"/>`).join('')}
+      <rect x="14" y="14" width="252" height="352" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" rx="2"/>
+      <line x1="14" y1="190" x2="266" y2="190" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+      <circle cx="140" cy="190" r="35" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>
+      <rect x="70" y="14" width="140" height="55" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+      <rect x="70" y="311" width="140" height="55" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+      <rect x="105" y="6" width="70" height="14" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+      <rect x="105" y="360" width="70" height="14" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+      ${circles}
+    </svg>`;
+}
+
+export function academyXIScreen() {
+  const p = GameState.player;
+  const nation = NATIONS.find(n => n.id === p.nationality);
+  const countryName = nation?.name || 'National';
+  const pitch = renderFormationPitch(p.position, p.name, p.nationality);
+
+  return `
+<div class="screen academy-xi-screen animate__animated animate__fadeIn">
+  <div class="axi-header">
+    <img class="axi-flag-img" src="https://flagcdn.com/w80/${nation?.code || 'un'}.png" alt="${countryName}">
+    <div class="axi-eyebrow">${countryName} Under-18 National Finals</div>
+    <div class="axi-title">${p.name.toUpperCase()}</div>
+    <div class="axi-subtitle">You've made the starting XI</div>
+  </div>
+  <div class="axi-formation-label">4 — 3 — 3</div>
+  <div class="axi-pitch-wrap">${pitch}</div>
+  <div class="axi-manager-quote">
+    <div class="axi-mgr-text">"You've earned this. Now go show them what you're made of."</div>
+    <div class="axi-mgr-name">Academy Director</div>
+  </div>
+  <button class="cta-btn axi-kick-btn" id="kick-off-btn">⚽ KICK OFF</button>
+</div>`;
 }
