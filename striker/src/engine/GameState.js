@@ -47,6 +47,9 @@ export const GameState = {
     managerTrackBackFired: false,
     managerPraiseFired: false,
     benchShown: false,
+    redCardPopupShown: false,
+    oppGoalJustScored: false,
+    lastOppGoalNarrative: '',
   },
 
   // Opponent — Academy tier fixed stats
@@ -116,6 +119,9 @@ export const GameState = {
       managerTrackBackFired: false,
       managerPraiseFired: false,
       benchShown: false,
+      redCardPopupShown: false,
+      oppGoalJustScored: false,
+      lastOppGoalNarrative: '',
     };
     this.debug.rolls = [];
     this.postMatch = { statChanges: {}, managerQuote: '', headline: '', offPitchEvent: null };

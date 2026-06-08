@@ -216,8 +216,8 @@ function runMatchTick() {
     return;
   }
 
-  // If substituted — run background-only simulation, no player events
-  if (m.substituted) {
+  // If substituted or sent off — run background-only simulation, no player events
+  if (m.substituted || m.sentOff) {
     const bgEntries = runBackgroundOnly(m.minute);
     bgEntries.forEach(e => m.feed.push(e));
     refreshFeed();
@@ -232,6 +232,12 @@ function runMatchTick() {
   refreshFeed();
   refreshHUD();
   refreshDebug();
+
+  // Fix 4: opposition goal popup
+  if (m.oppGoalJustScored) {
+    m.oppGoalJustScored = false;
+    showOppositionGoalPopup(m.lastOppGoalNarrative || '');
+  }
 
   if (playerInvolved && eventDef) {
     clearTimeout(matchTimer);
@@ -332,7 +338,12 @@ function handleContinue(result) {
     entries.forEach(e => m.feed.push(e));
     m.cascadeDepth = 0;
     m.cascadeBonus = false;
-    // Fix 3: flash for GOAL and ASSIST
+    // Red card popup — takes priority over everything
+    if (m.sentOff && !m.redCardPopupShown) {
+      m.redCardPopupShown = true;
+      setTimeout(() => showRedCardPopup(), 400);
+      return;
+    }
     if (next === 'GOAL') {
       showMomentFlash('GOAL');
       showCelebrationScreen();
@@ -360,28 +371,87 @@ function showWeaponDiscovery(weapon, result) {
   document.getElementById('wd-continue-btn').addEventListener('click', () => handleContinue(result));
 }
 
-// Fix 2: bench POV when substituted or sent off
+// Fix 3A: red card popup with 3 choices
+function showRedCardPopup() {
+  clearTimeout(matchTimer);
+  const m = GameState.match;
+  app.innerHTML = `
+    <div class="screen redcard-screen animate__animated animate__fadeIn">
+      <div class="rc-card">🟥</div>
+      <div class="rc-title">RED CARD</div>
+      <div class="rc-name">${GameState.player.name}</div>
+      <div class="rc-minute">${m.minute}'</div>
+      <div class="rc-text">You've been sent off. Your team play the rest with ten men.</div>
+      <div class="rc-question">What do you do?</div>
+      <div class="rc-choices">
+        <button class="rc-btn" data-rc="apologise">
+          <div class="rc-btn-label">Apologise to the referee</div>
+          <div class="rc-btn-desc">Head down. Accept it. Professionalism.</div>
+        </button>
+        <button class="rc-btn ego" data-rc="argue">
+          <div class="rc-btn-label">Argue — you were robbed</div>
+          <div class="rc-btn-desc">It wasn't a red. You're letting him know.</div>
+        </button>
+        <button class="rc-btn" data-rc="tunnel">
+          <div class="rc-btn-label">Storm down the tunnel</div>
+          <div class="rc-btn-desc">Don't look back. Don't say a word.</div>
+        </button>
+      </div>
+    </div>
+  `;
+  document.querySelector('.rc-choices').addEventListener('click', e => {
+    const btn = e.target.closest('[data-rc]');
+    if (!btn) return;
+    const choice = btn.dataset.rc;
+    if (choice === 'apologise') {
+      m.managerRelationship = Math.min(100, (m.managerRelationship || 50) + 5);
+      m.feed.push(`${m.minute}' — You hold your hands up and walk off. Head down.`);
+    } else if (choice === 'argue') {
+      m.managerRelationship = Math.max(0, (m.managerRelationship || 50) - 10);
+      m.confidence = Math.min(100, (m.confidence || 50) + 8);
+      m.feed.push(`${m.minute}' — You're still arguing as you leave the pitch. The fourth official has to intervene.`);
+    } else {
+      m.managerRelationship = Math.max(0, (m.managerRelationship || 50) - 5);
+      m.feed.push(`${m.minute}' — You disappear down the tunnel without a word. The stadium is stunned.`);
+    }
+    showBenchPOV('redcard');
+  });
+}
+
+// Fix 3B: bench POV when substituted or sent off
 function showBenchPOV(reason) {
   const m = GameState.match;
-  renderMatch();
-  const feedArea = document.getElementById('match-feed-area');
-  if (feedArea) {
-    feedArea.innerHTML = `
-      <div class="bench-pov">
-        <div class="bench-icon">${reason === 'redcard' ? '🟥' : '🚑'}</div>
-        <div class="bench-title">${reason === 'redcard' ? 'SENT OFF' : 'SUBSTITUTED'}</div>
-        <div class="bench-sub">${reason === 'redcard'
-          ? 'You walk down the tunnel. The game continues without you. Your team plays the rest with ten men.'
-          : 'Your legs gave out. You watch from the dugout as the final minutes play out.'
-        }</div>
-        <div class="bench-feed-label">FROM THE BENCH</div>
-        <div class="bench-live-feed" id="bench-live-feed">
-          ${m.feed.slice(-5).map(f => `<div class="bench-feed-entry">${f}</div>`).join('')}
+  app.innerHTML = `
+    <div id="match-wrapper">
+      ${matchHUD()}
+      <div id="match-feed-area">
+        <div class="bench-pov-header">
+          <div class="bench-pov-icon">${reason === 'redcard' ? '🟥' : '🚑'}</div>
+          <div class="bench-pov-title">${reason === 'redcard' ? "YOU'RE OFF" : 'SUBSTITUTED'}</div>
+          <div class="bench-pov-sub">Watching from the ${reason === 'redcard' ? 'tunnel' : 'dugout'}</div>
         </div>
+        ${matchFeedPanel(m.feed)}
       </div>
-    `;
-  }
+    </div>
+  `;
+  wireHUDControls();
   matchTimer = setTimeout(runMatchTick, 1200);
+}
+
+// Fix 4: opposition goal popup overlay
+function showOppositionGoalPopup(narrative) {
+  const m = GameState.match;
+  const wrapper = document.getElementById('match-wrapper');
+  if (!wrapper) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'opp-goal-overlay animate__animated animate__fadeIn';
+  overlay.innerHTML = `
+    <div class="og-icon">💀</div>
+    <div class="og-score">${m.score.us} — ${m.score.them}</div>
+    <div class="og-narrative">${narrative}</div>
+  `;
+  wrapper.appendChild(overlay);
+  setTimeout(() => overlay.remove(), 3000);
 }
 
 // Fix 3: goal/assist flash overlay

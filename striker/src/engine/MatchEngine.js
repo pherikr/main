@@ -238,12 +238,16 @@ export const MatchEngine = {
         r6.forEach(e => entries.push(e));
         break;
       }
-      case 'OPPOSITION_GOAL':
+      case 'OPPOSITION_GOAL': {
+        const oppNarr = pickOppositionGoalNarrative(minute);
         m.score.them++;
         RatingEngine.apply('caught_upfield');
-        entries.push(`😤 ${m.score.us}–${m.score.them} — They score. Opposition attack succeeds.`);
+        entries.push(`💀 ${m.score.us}–${m.score.them} — ${oppNarr}`);
         m.momentum = Math.max(0, m.momentum - 20);
+        m.lastOppGoalNarrative = oppNarr;
+        m.oppGoalJustScored = true;
         break;
+      }
       default:
         entries.push(`${minute}' — Play continues.`);
     }
@@ -290,8 +294,10 @@ function calcInvolvementChance(chanceType, m, p) {
 function resolveBackground(chanceType, minute) {
   const feed = [];
   const r = Math.random();
+  // Team plays weaker with red card (10 men)
+  const goalThreshold = 0.8 * getTeamPenalty();
 
-  if (r > 0.8) {
+  if (r > goalThreshold) {
     feed.push(`${minute}' — Teammate drives forward...`);
     return { goal: true, feed };
   }
@@ -336,19 +342,54 @@ function pickRefereeEvent(minute) {
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
+function getTeamPenalty() {
+  return GameState.match.redCard ? 0.75 : 1.0;
+}
+
 function resolveOpponentAttack(minute) {
   const m = GameState.match;
   const feed = [];
+  // Red card makes opposition attacks more dangerous
+  const goalThreshold = m.redCard ? 0.78 : 0.85;
   const r = Math.random();
 
-  if (r > 0.85) {
+  if (r > goalThreshold) {
+    const narrative = pickOppositionGoalNarrative(minute);
     m.score.them++;
-    feed.push(`💔 ${m.score.us}–${m.score.them} — They break through and score!`);
     m.momentum = Math.max(0, m.momentum - 15);
+    feed.push(`💀 ${m.score.us}–${m.score.them} — ${narrative}`);
+    m.lastOppGoalNarrative = narrative;
+    m.oppGoalJustScored = true;
   } else if (r > 0.6) {
     feed.push(`${minute}' — They press. Our keeper claims it.`);
   } else {
     feed.push(`${minute}' — Opposition build-up comes to nothing.`);
   }
   return { feed };
+}
+
+function pickOppositionGoalNarrative(minute) {
+  const narratives = [
+    'A hopeful ball over the top and your keeper misjudges it completely. No excuses.',
+    'Set piece routine — the near-post runner loses his marker and buries it.',
+    'Counter attack. Three passes and it\'s in the net before your defence gets back.',
+    'Long-range effort catches the keeper off his line. Stunning strike.',
+    'A cross from the right — nobody attacks it and it floats straight in at the far post.',
+    'Penalty. The referee points to the spot. No argument possible.',
+    'A scramble in the box. Three attempts before it crosses the line. Messy but it counts.',
+    'Their striker holds up play perfectly, turns, and drives low past the keeper.',
+    'Corner. Their centre-back rises unmarked at the back post. Routine defending gone wrong.',
+    'A catastrophic defensive error. The pass goes straight to him and he doesn\'t miss.',
+    'Free kick, bending over the wall. The keeper gets a hand on it but can\'t keep it out.',
+    'A through ball splits two defenders and the striker is through. Clinical finish.',
+    'They work it short, pull it back, and the arriving midfielder hits it first time. Perfect.',
+    'A deflection off a defender wrong-foots the keeper completely.',
+    'Fast throw-in catches your team napping. He cuts inside and finishes low.',
+    'The substitute has been on three minutes and scores immediately.',
+    'A long throw into the box — flick-on and the striker turns and volleys home.',
+    'Their winger beats the fullback for pace and crosses. The header is unstoppable.',
+    'A goalkeeping error. He spills it and they follow up before anyone can react.',
+    'The second ball falls to their midfielder twenty yards out. He doesn\'t think twice.',
+  ];
+  return narratives[Math.floor(Math.random() * narratives.length)];
 }
