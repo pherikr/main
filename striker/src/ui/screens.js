@@ -490,11 +490,16 @@ export function postMatchScreen() {
 
 export function debugPanel() {
   const rolls = GameState.debug.rolls;
-  if (!rolls.length) return '<div class="debug-panel"><em>No rolls yet.</em></div>';
 
   return `
 <div class="debug-panel">
   <div class="debug-title">🎲 DEBUG — Roll Log</div>
+  <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+    <button onclick="window.__debugCard('yellow')" style="padding:4px 8px;font-size:11px;background:#856404;border:none;border-radius:4px;color:#fff;cursor:pointer">🟨 Yellow</button>
+    <button onclick="window.__debugCard('red')" style="padding:4px 8px;font-size:11px;background:#7f1d1d;border:none;border-radius:4px;color:#fff;cursor:pointer">🟥 Red Card</button>
+    <button onclick="window.__debugCard('sub')" style="padding:4px 8px;font-size:11px;background:#1e3a5f;border:none;border-radius:4px;color:#fff;cursor:pointer">🚑 Sub Off</button>
+  </div>
+  ${!rolls.length ? '<em>No rolls yet.</em>' : ''}
   <div class="debug-rolls">
     ${rolls.slice(-30).reverse().map(r => `
       <div class="debug-entry ${r.isNat20 ? 'nat20' : r.isNat1 ? 'nat1' : ''}">
