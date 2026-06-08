@@ -43,10 +43,7 @@ function buildModifiers(choice) {
     mods.push({ label: 'Ego', value: 1 });
   }
 
-  // Form modifier
-  if (m.formModifier !== 0) {
-    mods.push({ label: 'Form', value: Math.round(m.formModifier) });
-  }
+
 
   // Stamina modifier
   const sm = staminaMod(m.stamina);
