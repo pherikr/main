@@ -568,16 +568,17 @@ function showCelebrationScreen() {
     if (!btn) return;
     const cel = CELEBRATIONS.find(c => c.id === btn.dataset.cel);
     if (!cel) return;
-    if (cel.yellowCardRisk) {
-      GameState.match.yellows = (GameState.match.yellows || 0) + 1;
-      GameState.match.feed.push('🟨 Yellow card for the celebration!');
-    }
     if (cel.ratingBonus) {
       GameState.match.rating = Math.max(1, Math.min(10,
         GameState.match.rating + cel.ratingBonus
       ));
     }
     GameState.match.feed.push(`🎉 ${cel.narrative}`);
+    if (cel.yellowCardRisk) {
+      // giveCard handles yellow→red promotion automatically
+      giveCard('yellow');
+      return;
+    }
     returnToMatch();
   });
 }
