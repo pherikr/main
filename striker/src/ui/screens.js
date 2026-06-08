@@ -215,6 +215,11 @@ export function matchHUD() {
   const { label, color } = RatingEngine.band(m.rating);
   const staminaColor = m.stamina >= 70 ? '#4ade80' : m.stamina >= 40 ? '#facc15' : m.stamina >= 20 ? '#fb923c' : '#ef4444';
 
+  const offPitch = m.sentOff || (m.substituted && !m.sentOff);
+  const offPitchLabel = m.sentOff
+    ? '🟥 OFF THE PITCH — Suspended'
+    : '🚑 OFF THE PITCH — Subbed off';
+
   return `
 <div class="hud">
   <div class="hud-score">
@@ -229,6 +234,9 @@ export function matchHUD() {
     <div class="hud-rating" style="color:${color}">${m.rating.toFixed(1)} <span class="rating-label">${label}</span></div>
   </div>
 
+  ${offPitch ? `
+  <div class="hud-off-pitch-bar">${offPitchLabel}</div>
+  ` : `
   <div class="hud-bars">
     <div class="hud-bar-group">
       <span class="hud-bar-label">STA</span>
@@ -264,6 +272,7 @@ export function matchHUD() {
       </div>
     </div>
   </div>
+  `}
   ${renderStatsBlock(GameState)}
 </div>`;
 }
