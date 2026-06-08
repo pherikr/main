@@ -47,7 +47,6 @@ export const GameState = {
     managerTrackBackFired: false,
     managerPraiseFired: false,
     benchShown: false,
-    redCardPopupShown: false,
     oppGoalJustScored: false,
     lastOppGoalNarrative: '',
   },
@@ -119,8 +118,7 @@ export const GameState = {
       managerTrackBackFired: false,
       managerPraiseFired: false,
       benchShown: false,
-      redCardPopupShown: false,
-      oppGoalJustScored: false,
+        oppGoalJustScored: false,
       lastOppGoalNarrative: '',
     };
     this.debug.rolls = [];

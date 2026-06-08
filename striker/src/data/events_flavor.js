@@ -446,53 +446,28 @@ export const CARD_TERMINALS = {
 
   YELLOW_CARD_EVENT: {
     resolve: (gs) => {
-      gs.match.yellows = (gs.match.yellows || 0) + 1;
-      const isSecond = gs.match.yellows >= 2;
-      const entries = [];
-      if (isSecond) {
-        // Second yellow = red card
-        gs.match.redCard = true;
-        gs.match.substituted = true;
-        gs.match.exhaustionSub = false;
-        gs.match.sentOff = true;
-        entries.push(`🟥 SECOND YELLOW — RED CARD. ${gs.player.name} is off. The team play the rest with ten men.`);
-        entries.push(`${gs.match.minute}' — You walk. Head down. The dressing room before the final whistle.`);
-      } else {
-        entries.push(`🟨 YELLOW CARD — ${gs.player.name} is booked. ${gs.match.minute}'. One more and you're off.`);
-        entries.push(`The referee points at you. The crowd reacts.`);
-      }
-      return entries;
+      // Don't set state here — giveCard() in controller handles everything
+      // Just return feed text so MatchEngine can push it, then controller calls giveCard
+      return ['__GIVE_YELLOW__'];
     },
   },
 
   RED_CARD_EVENT: {
     resolve: (gs) => {
-      gs.match.redCard = true;
-      gs.match.substituted = true;
-      gs.match.sentOff = true;
-      return [
-        `🟥 RED CARD. ${gs.player.name} is sent off. ${gs.match.minute}'.`,
-        `The walk off the pitch feels very long. The manager won't look at you.`,
-      ];
+      return ['__GIVE_RED__'];
     },
   },
 
   FOUL_GIVEN_DANGER: {
     resolve: (gs) => {
-      gs.match.yellows = (gs.match.yellows || 0) + 1;
-      if (gs.match.yellows >= 2) {
-        gs.match.redCard = true;
-        gs.match.substituted = true;
-        gs.match.sentOff = true;
-        return [
-          `🟥 SECOND YELLOW — Foul in a dangerous area. You're off.`,
-          `${gs.match.minute}' — That's two. You knew the risk. The walk begins.`,
-        ];
-      }
-      return [
-        `🟨 Foul given — yellow card. Dangerous area. Their free kick.`,
-        `${gs.match.minute}' — You got there but the referee saw it differently.`,
-      ];
+      // This is a yellow — may become red if second yellow
+      return ['__GIVE_YELLOW__'];
+    },
+  },
+
+  DIVE_CAUGHT: {
+    resolve: (gs) => {
+      return ['__GIVE_YELLOW__', `${gs.match.minute}' — Simulation! The referee wasn't fooled.`];
     },
   },
 
@@ -500,7 +475,7 @@ export const CARD_TERMINALS = {
     resolve: (gs) => {
       gs.match.confidence = Math.min(100, gs.match.confidence + 10);
       gs.match.momentum   = Math.min(100, gs.match.momentum + 8);
-      return [`${gs.match.minute}' — Second half. You feel sharper. The talk at half time landed.`];
+      return [`${gs.match.minute}' — Second half. The talk at half time landed.`];
     },
   },
 
@@ -508,26 +483,6 @@ export const CARD_TERMINALS = {
     resolve: (gs) => {
       gs.match.subRisk = true;
       return [`${gs.match.minute}' — The manager is watching. One more poor decision and you might find yourself on the bench.`];
-    },
-  },
-
-  DIVE_CAUGHT: {
-    resolve: (gs) => {
-      gs.match.yellows = (gs.match.yellows || 0) + 1;
-      gs.match.confidence = Math.max(0, gs.match.confidence - 15);
-      if (gs.match.yellows >= 2) {
-        gs.match.redCard = true;
-        gs.match.substituted = true;
-        gs.match.sentOff = true;
-        return [
-          `🟥 SIMULATION — Second yellow for diving. You're off. Disgraceful.`,
-          `${gs.match.minute}' — The crowd boos you all the way to the tunnel.`,
-        ];
-      }
-      return [
-        `🟨 SIMULATION — Yellow card. The referee wasn\'t fooled. Neither was anyone else.`,
-        `${gs.match.minute}' — The crowd lets you hear about it.`,
-      ];
     },
   },
 

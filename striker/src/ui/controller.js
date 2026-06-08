@@ -187,10 +187,9 @@ function runMatchTick() {
     return;
   }
 
-  // Fix 2: bench POV for red card
+  // If sent off and bench not shown yet — show it now
   if (m.sentOff && !m.benchShown) {
-    m.benchShown = true;
-    showBenchPOV('redcard');
+    showBenchPOV();
     return;
   }
 
@@ -341,13 +340,25 @@ function handleContinue(result) {
 
   if (isTerminal(next)) {
     const entries = MatchEngine.resolveTerminal(next, m.minute);
-    entries.forEach(e => m.feed.push(e));
     m.cascadeDepth = 0;
     m.cascadeBonus = false;
-    // Red card popup — takes priority over everything
-    if (m.sentOff && !m.redCardPopupShown) {
-      m.redCardPopupShown = true;
-      setTimeout(() => showRedCardPopup(), 400);
+
+    // Check for card signals BEFORE pushing to feed
+    const hasYellow = entries.includes('__GIVE_YELLOW__');
+    const hasRed    = entries.includes('__GIVE_RED__');
+
+    // Push all non-signal entries to feed
+    entries
+      .filter(e => e !== '__GIVE_YELLOW__' && e !== '__GIVE_RED__')
+      .forEach(e => m.feed.push(e));
+
+    // Fire card — giveCard handles all state and UI, then returns
+    if (hasRed) {
+      giveCard('red');
+      return;
+    }
+    if (hasYellow) {
+      giveCard('yellow');
       return;
     }
     if (next === 'GOAL') {
@@ -377,24 +388,55 @@ function showWeaponDiscovery(weapon, result) {
   document.getElementById('wd-continue-btn').addEventListener('click', () => handleContinue(result));
 }
 
-// Fix 3A: red card popup with 3 choices
-function showRedCardPopup() {
+// ── CARD SYSTEM — single source of truth ─────────────────────────────────────
+// giveCard() is the ONLY function that handles cards.
+// It runs synchronously. No setTimeout. Nothing can interrupt it.
+
+function giveCard(type) {
+  // type: 'yellow' | 'red' | 'second_yellow'
   clearTimeout(matchTimer);
   const m = GameState.match;
+
+  if (type === 'yellow') {
+    m.yellows = (m.yellows || 0) + 1;
+    if (m.yellows >= 2) {
+      // Second yellow becomes red
+      giveCard('second_yellow');
+      return;
+    }
+    // Show yellow card notification inline then resume
+    m.feed.push(`🟨 YELLOW CARD — ${GameState.player.name} is booked. ${m.minute}'. One more and you're off.`);
+    refreshFeed();
+    refreshHUD();
+    matchTimer = setTimeout(runMatchTick, 1200);
+    return;
+  }
+
+  // RED or SECOND_YELLOW — player is sent off
+  m.redCard    = true;
+  m.sentOff    = true;
+  m.substituted = true;
+
+  const reason  = type === 'second_yellow' ? 'SECOND YELLOW CARD' : 'RED CARD';
+  const subText = type === 'second_yellow'
+    ? 'Two yellows. You\'re off. Your team play the rest with ten men.'
+    : 'Straight red. Walk. Your team play the rest with ten men.';
+
+  // Build the red card screen synchronously — NO setTimeout
   app.innerHTML = `
     <div class="screen redcard-screen animate__animated animate__fadeIn">
-      <div class="rc-card">🟥</div>
-      <div class="rc-title">RED CARD</div>
+      <div class="rc-card">${type === 'second_yellow' ? '🟨🟥' : '🟥'}</div>
+      <div class="rc-title">${reason}</div>
       <div class="rc-name">${GameState.player.name}</div>
       <div class="rc-minute">${m.minute}'</div>
-      <div class="rc-text">You've been sent off. Your team play the rest with ten men.</div>
+      <div class="rc-text">${subText}</div>
       <div class="rc-question">What do you do?</div>
       <div class="rc-choices">
         <button class="rc-btn" data-rc="apologise">
           <div class="rc-btn-label">Apologise to the referee</div>
           <div class="rc-btn-desc">Head down. Accept it. Professionalism.</div>
         </button>
-        <button class="rc-btn ego" data-rc="argue">
+        <button class="rc-btn rc-btn-ego" data-rc="argue">
           <div class="rc-btn-label">Argue — you were robbed</div>
           <div class="rc-btn-desc">It wasn't a red. You're letting him know.</div>
         </button>
@@ -405,42 +447,51 @@ function showRedCardPopup() {
       </div>
     </div>
   `;
+
+  // Wire the buttons — synchronous, no race condition possible
   document.querySelector('.rc-choices').addEventListener('click', e => {
     const btn = e.target.closest('[data-rc]');
     if (!btn) return;
     const choice = btn.dataset.rc;
+
     if (choice === 'apologise') {
       m.managerRelationship = Math.min(100, (m.managerRelationship || 50) + 5);
-      m.feed.push(`${m.minute}' — You hold your hands up and walk off. Head down.`);
+      m.feed.push(`${m.minute}' — You hold your hands up and walk off. Head down. The crowd applauds the sportsmanship.`);
     } else if (choice === 'argue') {
       m.managerRelationship = Math.max(0, (m.managerRelationship || 50) - 10);
       m.confidence = Math.min(100, (m.confidence || 50) + 8);
-      m.feed.push(`${m.minute}' — You're still arguing as you leave the pitch. The fourth official has to intervene.`);
+      m.feed.push(`${m.minute}' — You're still arguing as you leave the pitch. The fourth official has to step in.`);
     } else {
       m.managerRelationship = Math.max(0, (m.managerRelationship || 50) - 5);
-      m.feed.push(`${m.minute}' — You disappear down the tunnel without a word. The stadium is stunned.`);
+      m.feed.push(`${m.minute}' — You disappear down the tunnel without a word. The stadium goes quiet.`);
     }
-    showBenchPOV('redcard');
+
+    showBenchPOV();
   });
 }
 
-function showBenchPOV(reason) {
+function showBenchPOV() {
   const m = GameState.match;
   m.benchShown = true;
+
+  // Rebuild the full match view — matchHUD() will detect sentOff and
+  // render OFF THE PITCH bar instead of work rate / mentality controls
   app.innerHTML = `
     <div id="match-wrapper">
       ${matchHUD()}
       <div id="match-feed-area">
         <div class="bench-pov-header">
-          <div class="bench-pov-icon">${reason === 'redcard' ? '🟥' : '🚑'}</div>
-          <div class="bench-pov-title">${reason === 'redcard' ? "YOU'RE OFF" : 'SUBSTITUTED'}</div>
-          <div class="bench-pov-sub">Watching from the ${reason === 'redcard' ? 'tunnel' : 'dugout'}</div>
+          <div class="bench-pov-icon">🟥</div>
+          <div class="bench-pov-title">YOU'RE OFF THE PITCH</div>
+          <div class="bench-pov-sub">The match continues without you</div>
         </div>
         ${matchFeedPanel(m.feed)}
       </div>
     </div>
   `;
-  wireHUDControls();
+
+  // Don't wire HUD controls — player is off, controls do nothing
+  // Just resume background simulation
   matchTimer = setTimeout(runMatchTick, 1200);
 }
 
