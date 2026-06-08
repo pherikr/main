@@ -27,6 +27,15 @@ export function startGame() {
   showCreation();
 }
 
+// Debug helpers — accessible from the debug panel buttons
+window.__debugCard = (type) => {
+  if (type === 'sub') {
+    GameState.match.stamina = 0;
+  } else {
+    giveCard(type);
+  }
+};
+
 // ── CREATION ─────────────────────────────────────────────────────────────────
 
 function showCreation() {
