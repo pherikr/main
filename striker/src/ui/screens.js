@@ -6,6 +6,30 @@ import { WEAPONS, DISCOVER_OPTION } from '../data/weapons.js';
 import { GameState } from '../engine/GameState.js';
 import { RatingEngine } from '../engine/RatingEngine.js';
 import { renderPitchMap } from './pitchMap.js';
+import { renderStatsBlock } from '../data/events_flavor.js';
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+
+function formatStatName(key) {
+  const names = {
+    dribbling: 'DRI', agility: 'AGI', finishing: 'FIN',
+    composure: 'CMP', vision: 'VIS', longPassing: 'LPS',
+    shortPassing: 'SPS', physicality: 'PHY', pace: 'PAC',
+    balance: 'BAL', ballControl: 'CTL', longShots: 'LSH',
+    heading: 'HED', acceleration: 'ACC', intelligence: 'INT',
+    stamina: 'STA', shortTackle: 'STK', slideTackle: 'SLD',
+    positioning: 'POS', gk_diving: 'DIV', gk_reflexes: 'REF',
+    gk_composure: 'GKC', gk_handling: 'HND',
+  };
+  return names[key] || key.toUpperCase().slice(0, 3);
+}
+
+function getOppStat(key) {
+  const opp = GameState.opponent;
+  if (!opp) return '?';
+  if (key.startsWith('gk_')) return opp.gk?.[key] ?? '?';
+  return opp.defender?.[key] ?? '?';
+}
 
 // ── CREATION ─────────────────────────────────────────────────────────────────
 
@@ -30,9 +54,9 @@ export function creationScreen() {
       <label>Nationality</label>
       <div class="flag-grid" id="nation-grid">
         ${NATIONS.map(n => `
-          <button class="flag-btn" data-nation="${n.id}" title="${n.name}">
-            <span class="flag">${n.flag}</span>
-            <span class="nation-name">${n.name}</span>
+          <button class="flag-btn" data-nation="${n.id}">
+            <img class="flag-img" src="https://flagcdn.com/w40/${n.code}.png" alt="${n.name}" loading="lazy">
+            <span class="flag-name">${n.name}</span>
           </button>
         `).join('')}
       </div>
@@ -191,6 +215,11 @@ export function matchHUD() {
   const { label, color } = RatingEngine.band(m.rating);
   const staminaColor = m.stamina >= 70 ? '#4ade80' : m.stamina >= 40 ? '#facc15' : m.stamina >= 20 ? '#fb923c' : '#ef4444';
 
+  const offPitch = m.sentOff || (m.substituted && !m.sentOff);
+  const offPitchLabel = m.sentOff
+    ? '🟥 OFF THE PITCH — Suspended'
+    : '🚑 OFF THE PITCH — Subbed off';
+
   return `
 <div class="hud">
   <div class="hud-score">
@@ -205,6 +234,9 @@ export function matchHUD() {
     <div class="hud-rating" style="color:${color}">${m.rating.toFixed(1)} <span class="rating-label">${label}</span></div>
   </div>
 
+  ${offPitch ? `
+  <div class="hud-off-pitch-bar">${offPitchLabel}</div>
+  ` : `
   <div class="hud-bars">
     <div class="hud-bar-group">
       <span class="hud-bar-label">STA</span>
@@ -240,6 +272,8 @@ export function matchHUD() {
       </div>
     </div>
   </div>
+  `}
+  ${renderStatsBlock(GameState)}
 </div>`;
 }
 
@@ -299,7 +333,15 @@ export function eventScreen(eventDef, filteredChoices) {
           ${boosted ? `<span class="cc-boost">${weapon.icon} BOOSTED</span>` : ''}
         </div>
         <div class="cc-desc">${c.desc}</div>
-        <div class="cc-stat">Uses: <strong>${c.stat.replace('_',' ').toUpperCase()}</strong> (${p.stats[c.stat] || '?'})</div>
+        <div class="cc-stats-row">
+          <div class="cc-stats-yours">
+            ${(c.yourStats||[]).map(s => `<span class="cc-stat-chip yours">${formatStatName(s)}&nbsp;<strong>${p.stats[s] || '?'}</strong></span>`).join('')}
+          </div>
+          <span class="cc-vs">vs</span>
+          <div class="cc-stats-opp">
+            ${(c.oppStats||[]).map(s => `<span class="cc-stat-chip opp">${formatStatName(s)}&nbsp;<strong>${getOppStat(s)}</strong></span>`).join('')}
+          </div>
+        </div>
       </button>`;
     }).join('')}
   </div>
@@ -325,7 +367,10 @@ export function outcomeScreen(result, narrativeText) {
 <div class="screen outcome-screen animate__animated animate__fadeIn">
   ${badge}
 
-  <div class="outcome-narrative">${narrativeText}</div>
+  <div class="outcome-result-card ${success ? 'success' : 'failure'}">
+    <div class="orc-icon">${isNat20 ? '⚡' : isNat1 ? '💀' : success ? '✓' : '✗'}</div>
+    <div class="orc-narrative">${narrativeText}</div>
+  </div>
 
   <div class="dice-display">
     <div class="dice-block">
@@ -406,6 +451,12 @@ export function postMatchScreen() {
     <div class="pm-stat"><span>Events</span><strong>${m.eventsResolved}</strong></div>
     <div class="pm-stat"><span>Ego Plays</span><strong>${m.egoChoicesMade}</strong></div>
   </div>
+
+  ${m.exhaustionSub ? `
+  <div class="pm-sub-notice">
+    🚑 <strong>Substituted through exhaustion</strong> — stamina ran out before full time.
+    Work rate management will be critical going forward.
+  </div>` : ''}
 
   <div class="pm-headline">"${headline}"</div>
 

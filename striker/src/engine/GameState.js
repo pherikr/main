@@ -34,6 +34,40 @@ export const GameState = {
     cascadeBonus: false,
     ratingHistory: [],
     rattled: false,        // just came off nat 1
+    substituted: false,    // player subbed off
+    exhaustionSub: false,  // subbed due to stamina = 0
+    yellows: 0,
+    redCard: false,
+    sentOff: false,
+    subRisk: false,
+    managerRelationship: 50,
+    shotsOnTarget: 0,
+    shotsMissed: 0,
+    keeperAdvanced: false,
+    managerTrackBackFired: false,
+    managerPraiseFired: false,
+    benchShown: false,
+    redCardPopupShown: false,
+    oppGoalJustScored: false,
+    lastOppGoalNarrative: '',
+  },
+
+  // Opponent — Academy tier fixed stats
+  opponent: {
+    defender: {
+      shortTackle: 52,
+      slideTackle: 50,
+      positioning: 54,
+      pace: 51,
+      physicality: 53,
+      heading: 52,
+    },
+    gk: {
+      gk_diving:    55,
+      gk_reflexes:  53,
+      gk_composure: 54,
+      gk_handling:  52,
+    },
   },
 
   // Debug
@@ -72,6 +106,22 @@ export const GameState = {
       cascadeBonus: false,
       ratingHistory: [],
       rattled: false,
+      substituted: false,
+      exhaustionSub: false,
+      yellows: 0,
+      redCard: false,
+      sentOff: false,
+      subRisk: false,
+      managerRelationship: 50,
+      shotsOnTarget: 0,
+      shotsMissed: 0,
+      keeperAdvanced: false,
+      managerTrackBackFired: false,
+      managerPraiseFired: false,
+      benchShown: false,
+      redCardPopupShown: false,
+      oppGoalJustScored: false,
+      lastOppGoalNarrative: '',
     };
     this.debug.rolls = [];
     this.postMatch = { statChanges: {}, managerQuote: '', headline: '', offPitchEvent: null };

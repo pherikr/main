@@ -6,6 +6,7 @@ import { WEAPONS } from '../data/weapons.js';
 import { EventEngine } from '../engine/EventEngine.js';
 import { MatchEngine } from '../engine/MatchEngine.js';
 import { RatingEngine } from '../engine/RatingEngine.js';
+import { CELEBRATIONS, OPPOSITION_EVENTS } from '../data/events_flavor.js';
 import {
   creationScreen, statCardScreen, matchHUD, matchFeedPanel,
   eventScreen, outcomeScreen, weaponDiscoveryScreen, postMatchScreen, debugPanel,
@@ -142,21 +143,27 @@ function renderMatch() {
     </div>
   `;
 
-  document.getElementById('wr-toggle').addEventListener('click', e => {
-    const b = e.target.closest('[data-wr]');
-    if (!b) return;
-    const m = GameState.match;
-    if (b.dataset.wr === 'high' && m.stamina < 19) return;
-    m.workRate = b.dataset.wr;
-    refreshHUD();
-  });
+  const wrToggleEl = document.getElementById('wr-toggle');
+  if (wrToggleEl) {
+    wrToggleEl.addEventListener('click', e => {
+      const b = e.target.closest('[data-wr]');
+      if (!b) return;
+      const m = GameState.match;
+      if (b.dataset.wr === 'high' && m.stamina < 19) return;
+      m.workRate = b.dataset.wr;
+      refreshHUD();
+    });
+  }
 
-  document.getElementById('men-toggle').addEventListener('click', e => {
-    const b = e.target.closest('[data-men]');
-    if (!b) return;
-    GameState.match.mentality = b.dataset.men;
-    refreshHUD();
-  });
+  const menToggleEl = document.getElementById('men-toggle');
+  if (menToggleEl) {
+    menToggleEl.addEventListener('click', e => {
+      const b = e.target.closest('[data-men]');
+      if (!b) return;
+      GameState.match.mentality = b.dataset.men;
+      refreshHUD();
+    });
+  }
 
   document.getElementById('debug-toggle-btn').addEventListener('click', () => {
     GameState.debug.enabled = !GameState.debug.enabled;
@@ -180,15 +187,48 @@ function runMatchTick() {
     return;
   }
 
-  // Advance 3 minutes per tick
+  // Fix 2: bench POV for red card
+  if (m.sentOff && !m.benchShown) {
+    m.benchShown = true;
+    showBenchPOV('redcard');
+    return;
+  }
+
+  // Fix 4: stamina 0 = substitution — match continues without player events
+  if (m.stamina <= 0 && !m.substituted) {
+    m.substituted = true;
+    m.exhaustionSub = true;
+    m.stamina = 0;
+    m.feed.push(`🚑 ${m.minute}' — You're being substituted. Your legs gave out. The manager has no choice.`);
+    refreshFeed();
+    refreshHUD();
+    if (!m.benchShown) {
+      m.benchShown = true;
+      showBenchPOV('sub');
+    } else {
+      matchTimer = setTimeout(runMatchTick, 1200);
+    }
+    return;
+  }
+
   const tickMinutes = 3;
   m.minute = Math.min(90, m.minute + tickMinutes);
   MatchEngine.drainStaminaPassive(tickMinutes);
 
   // Force late drama at 82'
-  if (m.minute >= 82 && !a6Scheduled && (m.score.us <= m.score.them)) {
+  if (m.minute >= 82 && !a6Scheduled && (m.score.us <= m.score.them) && !m.substituted) {
     a6Scheduled = true;
     triggerEvent(EventEngine.getEvent('A6'));
+    return;
+  }
+
+  // If substituted or sent off — run background-only simulation, no player events
+  if (m.substituted || m.sentOff) {
+    const bgEntries = runBackgroundOnly(m.minute);
+    bgEntries.forEach(e => m.feed.push(e));
+    refreshFeed();
+    refreshHUD();
+    matchTimer = setTimeout(runMatchTick, Math.max(400, tickMinutes * 300));
     return;
   }
 
@@ -199,12 +239,16 @@ function runMatchTick() {
   refreshHUD();
   refreshDebug();
 
+  // Fix 4: opposition goal popup
+  if (m.oppGoalJustScored) {
+    m.oppGoalJustScored = false;
+    showOppositionGoalPopup(m.lastOppGoalNarrative || '');
+  }
+
   if (playerInvolved && eventDef) {
     clearTimeout(matchTimer);
-    // Brief pause then show event
     matchTimer = setTimeout(() => triggerEvent(eventDef), 600);
   } else {
-    // Continue after ~1.2s per minute
     matchTimer = setTimeout(runMatchTick, Math.max(400, tickMinutes * 400));
   }
 }
@@ -233,6 +277,18 @@ function triggerEvent(eventDef) {
 function handleChoice(choice) {
   const result = EventEngine.resolve(pendingEventDef, choice);
   pendingResult = result;
+
+  // Step 5: manager relationship effect
+  if (choice.managerEffect) {
+    GameState.match.managerRelationship = Math.max(0, Math.min(100,
+      (GameState.match.managerRelationship || 50) + choice.managerEffect.relationship
+    ));
+    if (choice.managerEffect.confidence) {
+      GameState.match.confidence = Math.max(0, Math.min(100,
+        GameState.match.confidence + choice.managerEffect.confidence
+      ));
+    }
+  }
 
   const narrativeText = buildOutcomeNarrative(result);
 
@@ -264,15 +320,46 @@ function handleContinue(result) {
   const next = result.next;
   const m = GameState.match;
 
-  // Reset cascade depth if going back to feed
+  // Fix 3: FOUL_AGAINST in box → PENALTY event
+  if (next === 'PENALTY_TRIGGER') {
+    m.feed.push(`🟡 ${m.minute}' — Foul in the box! PENALTY to us!`);
+    refreshFeed();
+    const penaltyEvent = EventEngine.getEvent('PENALTY');
+    if (penaltyEvent) {
+      triggerEvent(penaltyEvent);
+    } else {
+      returnToMatch();
+    }
+    return;
+  }
+
+  // OPPOSITION_ATTACK — treat as a new event, not a terminal
+  if (next === 'OPPOSITION_ATTACK') {
+    triggerEvent(OPPOSITION_EVENTS.OPPOSITION_ATTACK);
+    return;
+  }
+
   if (isTerminal(next)) {
     const entries = MatchEngine.resolveTerminal(next, m.minute);
     entries.forEach(e => m.feed.push(e));
     m.cascadeDepth = 0;
     m.cascadeBonus = false;
+    // Red card popup — takes priority over everything
+    if (m.sentOff && !m.redCardPopupShown) {
+      m.redCardPopupShown = true;
+      setTimeout(() => showRedCardPopup(), 400);
+      return;
+    }
+    if (next === 'GOAL') {
+      showMomentFlash('GOAL');
+      showCelebrationScreen();
+      return;
+    }
+    if (next === 'ASSIST') {
+      showMomentFlash('ASSIST');
+    }
     returnToMatch();
   } else {
-    // Cascade to next event
     const nextEvent = EventEngine.getEvent(next);
     if (nextEvent) {
       triggerEvent(nextEvent);
@@ -284,8 +371,155 @@ function handleContinue(result) {
 }
 
 function showWeaponDiscovery(weapon, result) {
+  GameState.player.weapon = weapon.id;  // Fix 1: set permanently so it never retriggers
+  GameState.match.weaponDiscovered = true;
   app.innerHTML = `<div id="match-wrapper">${weaponDiscoveryScreen(weapon)}</div>`;
   document.getElementById('wd-continue-btn').addEventListener('click', () => handleContinue(result));
+}
+
+// Fix 3A: red card popup with 3 choices
+function showRedCardPopup() {
+  clearTimeout(matchTimer);
+  const m = GameState.match;
+  app.innerHTML = `
+    <div class="screen redcard-screen animate__animated animate__fadeIn">
+      <div class="rc-card">🟥</div>
+      <div class="rc-title">RED CARD</div>
+      <div class="rc-name">${GameState.player.name}</div>
+      <div class="rc-minute">${m.minute}'</div>
+      <div class="rc-text">You've been sent off. Your team play the rest with ten men.</div>
+      <div class="rc-question">What do you do?</div>
+      <div class="rc-choices">
+        <button class="rc-btn" data-rc="apologise">
+          <div class="rc-btn-label">Apologise to the referee</div>
+          <div class="rc-btn-desc">Head down. Accept it. Professionalism.</div>
+        </button>
+        <button class="rc-btn ego" data-rc="argue">
+          <div class="rc-btn-label">Argue — you were robbed</div>
+          <div class="rc-btn-desc">It wasn't a red. You're letting him know.</div>
+        </button>
+        <button class="rc-btn" data-rc="tunnel">
+          <div class="rc-btn-label">Storm down the tunnel</div>
+          <div class="rc-btn-desc">Don't look back. Don't say a word.</div>
+        </button>
+      </div>
+    </div>
+  `;
+  document.querySelector('.rc-choices').addEventListener('click', e => {
+    const btn = e.target.closest('[data-rc]');
+    if (!btn) return;
+    const choice = btn.dataset.rc;
+    if (choice === 'apologise') {
+      m.managerRelationship = Math.min(100, (m.managerRelationship || 50) + 5);
+      m.feed.push(`${m.minute}' — You hold your hands up and walk off. Head down.`);
+    } else if (choice === 'argue') {
+      m.managerRelationship = Math.max(0, (m.managerRelationship || 50) - 10);
+      m.confidence = Math.min(100, (m.confidence || 50) + 8);
+      m.feed.push(`${m.minute}' — You're still arguing as you leave the pitch. The fourth official has to intervene.`);
+    } else {
+      m.managerRelationship = Math.max(0, (m.managerRelationship || 50) - 5);
+      m.feed.push(`${m.minute}' — You disappear down the tunnel without a word. The stadium is stunned.`);
+    }
+    showBenchPOV('redcard');
+  });
+}
+
+function showBenchPOV(reason) {
+  const m = GameState.match;
+  m.benchShown = true;
+  app.innerHTML = `
+    <div id="match-wrapper">
+      ${matchHUD()}
+      <div id="match-feed-area">
+        <div class="bench-pov-header">
+          <div class="bench-pov-icon">${reason === 'redcard' ? '🟥' : '🚑'}</div>
+          <div class="bench-pov-title">${reason === 'redcard' ? "YOU'RE OFF" : 'SUBSTITUTED'}</div>
+          <div class="bench-pov-sub">Watching from the ${reason === 'redcard' ? 'tunnel' : 'dugout'}</div>
+        </div>
+        ${matchFeedPanel(m.feed)}
+      </div>
+    </div>
+  `;
+  wireHUDControls();
+  matchTimer = setTimeout(runMatchTick, 1200);
+}
+
+// Fix 4: opposition goal popup overlay
+function showOppositionGoalPopup(narrative) {
+  const m = GameState.match;
+  const wrapper = document.getElementById('match-wrapper');
+  if (!wrapper) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'opp-goal-overlay animate__animated animate__fadeIn';
+  overlay.innerHTML = `
+    <div class="og-icon">💀</div>
+    <div class="og-score">${m.score.us} — ${m.score.them}</div>
+    <div class="og-narrative">${narrative}</div>
+  `;
+  wrapper.appendChild(overlay);
+  setTimeout(() => overlay.remove(), 3000);
+}
+
+// Fix 3: goal/assist flash overlay
+function showMomentFlash(type) {
+  const isGoal = type === 'GOAL';
+  const wrapper = document.getElementById('match-wrapper');
+  if (!wrapper) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'moment-flash animate__animated animate__zoomIn';
+  overlay.innerHTML = `
+    <div class="mf-icon">${isGoal ? '⚽' : '🎯'}</div>
+    <div class="mf-word">${isGoal ? 'GOAL!' : 'ASSIST!'}</div>
+    <div class="mf-name">${GameState.player.name}</div>
+    <div class="mf-minute">${GameState.match.minute}'</div>
+    <div class="mf-score">${GameState.match.score.us} — ${GameState.match.score.them}</div>
+  `;
+  wrapper.appendChild(overlay);
+  setTimeout(() => overlay.remove(), 2200);
+}
+
+function showCelebrationScreen() {
+  const minute = GameState.match.minute;
+  const shirtOff = CELEBRATIONS.find(c => c.id === 'shirt_off');
+  const others = CELEBRATIONS.filter(c => c.id !== 'shirt_off')
+    .sort(() => Math.random() - 0.5)
+    .slice(0, 3);
+  const pool = [shirtOff, ...others];
+
+  app.innerHTML = `
+    <div class="screen celebration-screen animate__animated animate__zoomIn">
+      <div class="cel-badge">⚽ GOAL!</div>
+      <div class="cel-minute">${minute}'</div>
+      <div class="cel-title">HOW DO YOU CELEBRATE?</div>
+      <div class="cel-choices">
+        ${pool.map(c => `
+          <button class="cel-choice ${c.isEgo ? 'ego' : ''}" data-cel="${c.id}">
+            <div class="cel-label">${c.label}</div>
+            <div class="cel-desc">${c.desc}</div>
+            ${c.yellowCardRisk ? '<div class="cel-warning">⚠️ Yellow card risk</div>' : ''}
+          </button>
+        `).join('')}
+      </div>
+    </div>
+  `;
+
+  document.querySelector('.cel-choices').addEventListener('click', e => {
+    const btn = e.target.closest('[data-cel]');
+    if (!btn) return;
+    const cel = CELEBRATIONS.find(c => c.id === btn.dataset.cel);
+    if (!cel) return;
+    if (cel.yellowCardRisk) {
+      GameState.match.yellows = (GameState.match.yellows || 0) + 1;
+      GameState.match.feed.push('🟨 Yellow card for the celebration!');
+    }
+    if (cel.ratingBonus) {
+      GameState.match.rating = Math.max(1, Math.min(10,
+        GameState.match.rating + cel.ratingBonus
+      ));
+    }
+    GameState.match.feed.push(`🎉 ${cel.narrative}`);
+    returnToMatch();
+  });
 }
 
 function returnToMatch() {
@@ -488,6 +722,43 @@ function buildOutcomeNarrative(result) {
 }
 
 function isTerminal(nextId) {
-  const cascadeIds = ['A1','A2','A2_KEEPER','A2_HALF','A3','A4','A5','A6','D1','SP1','SP2','C1','C2'];
+  const cascadeIds = [
+    'A1','A2','A3','A4','A5','A6','A7','A8','A9','A10',
+    'A1_KEEPER','A2_HALF',
+    'C1_OVERLAP','C2_SWITCH',
+    'D1_CORNER_AGAINST','D2_TRACKING_BACK',
+    'COUNTER_CASCADE',
+    'SP_FREEKICK_CLOSE','SP_CORNER','SP_CORNER_HEADER',
+    'PENALTY',
+    // v3 new cascade IDs
+    'LATE_ENFORCER','LATE_LAST_CHANCE',
+    'GAUNTLET_DEF1','GAUNTLET_DEF2','GAUNTLET_DEF3',
+    'KEEPER_ADVANCE',
+    // Flavor events — not terminals
+    'MANAGER_TRACK_BACK','MANAGER_HALFTIME_BLAST','MANAGER_PRAISE',
+    'OPPOSITION_ATTACK',
+    'REF_FOUL_GIVEN_YOU','REF_OFFSIDE_CALL','REF_PENALTY_APPEAL','REF_LAST_MAN_FOUL',
+    // Legacy IDs kept for safety
+    'D1','SP1','SP2','C1','C2',
+  ];
   return !cascadeIds.includes(nextId);
+}
+
+// Background-only simulation when player is substituted
+function runBackgroundOnly(minute) {
+  const m = GameState.match;
+  const feed = [];
+  const r = Math.random();
+  if (r > 0.88) {
+    m.score.us++;
+    feed.push(`⚽ ${m.score.us}–${m.score.them} — Team goal while you watch from the bench.`);
+  } else if (r > 0.78) {
+    m.score.them++;
+    feed.push(`💔 ${m.score.us}–${m.score.them} — They score. You can only watch.`);
+  } else if (r > 0.5) {
+    feed.push(`${minute}' — Team pressing hard without you.`);
+  } else {
+    feed.push(`${minute}' — Match continues. You're on the bench.`);
+  }
+  return feed;
 }
