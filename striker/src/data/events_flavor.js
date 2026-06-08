@@ -480,6 +480,15 @@ export const CARD_TERMINALS = {
   FOUL_GIVEN_DANGER: {
     resolve: (gs) => {
       gs.match.yellows = (gs.match.yellows || 0) + 1;
+      if (gs.match.yellows >= 2) {
+        gs.match.redCard = true;
+        gs.match.substituted = true;
+        gs.match.sentOff = true;
+        return [
+          `🟥 SECOND YELLOW — Foul in a dangerous area. You're off.`,
+          `${gs.match.minute}' — That's two. You knew the risk. The walk begins.`,
+        ];
+      }
       return [
         `🟨 Foul given — yellow card. Dangerous area. Their free kick.`,
         `${gs.match.minute}' — You got there but the referee saw it differently.`,
@@ -506,6 +515,15 @@ export const CARD_TERMINALS = {
     resolve: (gs) => {
       gs.match.yellows = (gs.match.yellows || 0) + 1;
       gs.match.confidence = Math.max(0, gs.match.confidence - 15);
+      if (gs.match.yellows >= 2) {
+        gs.match.redCard = true;
+        gs.match.substituted = true;
+        gs.match.sentOff = true;
+        return [
+          `🟥 SIMULATION — Second yellow for diving. You're off. Disgraceful.`,
+          `${gs.match.minute}' — The crowd boos you all the way to the tunnel.`,
+        ];
+      }
       return [
         `🟨 SIMULATION — Yellow card. The referee wasn\'t fooled. Neither was anyone else.`,
         `${gs.match.minute}' — The crowd lets you hear about it.`,

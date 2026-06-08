@@ -143,21 +143,27 @@ function renderMatch() {
     </div>
   `;
 
-  document.getElementById('wr-toggle').addEventListener('click', e => {
-    const b = e.target.closest('[data-wr]');
-    if (!b) return;
-    const m = GameState.match;
-    if (b.dataset.wr === 'high' && m.stamina < 19) return;
-    m.workRate = b.dataset.wr;
-    refreshHUD();
-  });
+  const wrToggleEl = document.getElementById('wr-toggle');
+  if (wrToggleEl) {
+    wrToggleEl.addEventListener('click', e => {
+      const b = e.target.closest('[data-wr]');
+      if (!b) return;
+      const m = GameState.match;
+      if (b.dataset.wr === 'high' && m.stamina < 19) return;
+      m.workRate = b.dataset.wr;
+      refreshHUD();
+    });
+  }
 
-  document.getElementById('men-toggle').addEventListener('click', e => {
-    const b = e.target.closest('[data-men]');
-    if (!b) return;
-    GameState.match.mentality = b.dataset.men;
-    refreshHUD();
-  });
+  const menToggleEl = document.getElementById('men-toggle');
+  if (menToggleEl) {
+    menToggleEl.addEventListener('click', e => {
+      const b = e.target.closest('[data-men]');
+      if (!b) return;
+      GameState.match.mentality = b.dataset.men;
+      refreshHUD();
+    });
+  }
 
   document.getElementById('debug-toggle-btn').addEventListener('click', () => {
     GameState.debug.enabled = !GameState.debug.enabled;
@@ -418,9 +424,9 @@ function showRedCardPopup() {
   });
 }
 
-// Fix 3B: bench POV when substituted or sent off
 function showBenchPOV(reason) {
   const m = GameState.match;
+  m.benchShown = true;
   app.innerHTML = `
     <div id="match-wrapper">
       ${matchHUD()}
