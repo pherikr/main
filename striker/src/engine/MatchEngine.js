@@ -86,10 +86,15 @@ export const MatchEngine = {
         m.score.us++;
         feedEntries.push(`⚽ GOAL! ${m.score.us}–${m.score.them} — Brilliant team move!`);
       }
-      // 4% chance of referee event when not player-involved
-      if (Math.random() > 0.96) {
+      // Referee events — 10% per tick, guaranteed by minute 60
+      const refFired = m.refEventFired || false;
+      const refChance = (!refFired && minute >= 60) ? 1.0 : 0.10;
+      if (Math.random() < refChance) {
         const refEvent = pickRefereeEvent(minute);
-        if (refEvent) return { playerInvolved: true, eventDef: refEvent, feedEntries };
+        if (refEvent) {
+          m.refEventFired = true;
+          return { playerInvolved: true, eventDef: refEvent, feedEntries };
+        }
       }
       return { playerInvolved: false, eventDef: null, feedEntries };
     }
@@ -321,21 +326,29 @@ function resolveBackground(chanceType, minute) {
 
 function checkManagerEventTrigger(minute) {
   const m = GameState.match;
-  if (minute === 45 && MANAGER_EVENTS.MANAGER_HALFTIME_BLAST.triggerCondition(GameState)) {
+
+  // Halftime — always fires at 45
+  if (minute === 45 && !m.managerHalftimeFired) {
+    m.managerHalftimeFired = true;
     return MANAGER_EVENTS.MANAGER_HALFTIME_BLAST;
   }
-  if (!m.managerTrackBackFired && minute >= 30 && Math.random() > 0.94) {
-    if (MANAGER_EVENTS.MANAGER_TRACK_BACK.triggerCondition(GameState)) {
+
+  // Track back — 12% per tick from min 25, guaranteed by min 55
+  if (!m.managerTrackBackFired && minute >= 25) {
+    if (Math.random() < 0.12 || minute >= 55) {
       m.managerTrackBackFired = true;
       return MANAGER_EVENTS.MANAGER_TRACK_BACK;
     }
   }
-  if (!m.managerPraiseFired && minute >= 60 && Math.random() > 0.96) {
-    if (MANAGER_EVENTS.MANAGER_PRAISE.triggerCondition(GameState)) {
+
+  // Praise — 8% per tick from min 55, rating threshold lowered to 6.8
+  if (!m.managerPraiseFired && minute >= 55 && m.rating >= 6.8) {
+    if (Math.random() < 0.08) {
       m.managerPraiseFired = true;
       return MANAGER_EVENTS.MANAGER_PRAISE;
     }
   }
+
   return null;
 }
 
