@@ -424,10 +424,63 @@ export function eventScreen(eventDef, filteredChoices) {
 
 // ── OUTCOME SCREEN ────────────────────────────────────────────────────────────
 
+function getDiveNarrative(outcome, roll) {
+  if (outcome === 'PENALTY') {
+    return [
+      "The referee doesn't hesitate. Down you go, point to the spot.",
+      "Perfect execution. The contact was minimal but the sell was immaculate.",
+      "He points to the spot. You don't celebrate — you stay in character.",
+    ][Math.floor(Math.random() * 3)];
+  }
+  if (outcome === 'PLAY_ON') {
+    return [
+      "He saw it. He doesn't care. Play on.",
+      "Contact wasn't enough. You're back on your feet.",
+      "The referee waves it away. At least nobody booked you.",
+    ][Math.floor(Math.random() * 3)];
+  }
+  return [
+    "The yellow card comes out before you're back on your feet.",
+    "He had a perfect view. He is not impressed.",
+    "A theatrical performance. The referee gives you a standing ovation. In the form of a yellow card.",
+  ][Math.floor(Math.random() * 3)];
+}
+
 export function outcomeScreen(result, narrativeText) {
   const { success, isNat20, isNat1, playerRoll, oppRoll, choice } = result;
   const m = GameState.match;
   const { label: rLabel, color: rColor } = RatingEngine.band(m.rating);
+
+  // Two-step dive result display
+  if (result.isDiveResult) {
+    const step1Class = (result.diveOutcome === 'DIVE_CAUGHT' && !result.step2Roll) ? 'fail' : 'success';
+    const step2Class = result.diveOutcome === 'PENALTY' ? 'success' : 'fail';
+    return `
+<div class="screen outcome-screen animate__animated animate__fadeIn">
+  <div class="outcome-header">
+    <div class="dice-step-label">FOUL SELLING ROLL</div>
+    <div class="dice-result-mini ${step1Class}">
+      d20: ${result.playerRoll.dice}
+      ${result.isNat20 ? '— NATURAL 20 🎲' : result.isNat1 ? '— NATURAL 1 💀' : ''}
+    </div>
+    ${result.step2Roll !== null ? `
+      <div class="dice-step-label" style="margin-top:10px">REFEREE DECISION</div>
+      <div class="dice-result-mini ${step2Class}">
+        d20: ${result.step2Roll}
+        ${result.step2Roll >= 16 ? '— PENALTY 📋' : result.step2Roll >= 8 ? '— PLAY ON' : '— CAUGHT 🟨'}
+      </div>
+    ` : ''}
+  </div>
+  <div class="outcome-result ${result.diveOutcome === 'PENALTY' ? 'success' : 'failure'}">
+    ${result.diveOutcome === 'PENALTY' ? '📋 PENALTY' : result.diveOutcome === 'PLAY_ON' ? 'PLAY ON' : '🟨 CAUGHT DIVING'}
+  </div>
+  <div class="outcome-narrative">${getDiveNarrative(result.diveOutcome, result.playerRoll.dice)}</div>
+  <div class="outcome-rating">
+    Rating: <span style="color:${rColor}">${m.rating.toFixed(1)} — ${rLabel}</span>
+  </div>
+  <button class="cta-btn" id="continue-btn">Continue →</button>
+</div>`;
+  }
 
   const badge = isNat20
     ? '<div class="outcome-badge nat20">⚡ NATURAL 20 — BRILLIANT!</div>'

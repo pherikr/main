@@ -52,6 +52,10 @@ export const MatchEngine = {
       // Opponent builds attack
       const res = resolveOpponentAttack(minute);
       feedEntries.push(...res.feed);
+      // 8% chance of box foul event after minute 20
+      if (minute > 20 && Math.random() < 0.08) {
+        m.pendingBoxFoul = true;
+      }
       return { playerInvolved: false, eventDef: null, feedEntries };
     }
 
@@ -212,6 +216,9 @@ export const MatchEngine = {
         break;
       case 'POSSESSION_RESET':
         entries.push(`🔄 Possession retained. Team resets.`);
+        break;
+      case 'PLAY_ON':
+        entries.push(`${minute}' — No penalty. Referee waves play on. Move on.`);
         break;
       case 'YELLOW_CARD_EVENT': {
         const r1 = CARD_TERMINALS.YELLOW_CARD_EVENT.resolve(GameState);

@@ -114,6 +114,11 @@ export const EventEngine = {
         if (val < c.statGate.min) return false;
       }
       if (c.weaponGate && c.weaponGate !== weaponId) return false;
+      // Dives are available to all players — no stat gate
+      // Low physicality is a bonus in the sell roll, not a gate
+      if (c.isDive) {
+        // Always visible — handled in resolution
+      }
       return true;
     });
   },
@@ -121,6 +126,40 @@ export const EventEngine = {
   resolve(eventDef, choice) {
     const m = GameState.match;
     const p = GameState.player;
+
+    // Check if this is a dive choice — use special resolution
+    if (choice.isDive) {
+      const diveResult = resolveDive(choice, GameState.player, GameState.opponent);
+
+      let finalNext;
+      if (diveResult.result === 'PENALTY') {
+        finalNext = 'PENALTY';
+        m.feed.push(`📋 ${m.minute}' — Contact in the box! The referee points to the spot!`);
+      } else if (diveResult.result === 'PLAY_ON') {
+        finalNext = 'POSSESSION_RESET';
+        m.feed.push(`${m.minute}' — No call. Referee waves play on.`);
+      } else {
+        finalNext = 'DIVE_CAUGHT';
+      }
+
+      drainStamina();
+      m.eventsResolved++;
+      m.cascadeDepth++;
+
+      return {
+        success: diveResult.result === 'PENALTY',
+        isDiveResult: true,
+        diveOutcome: diveResult.result,
+        next: finalNext,
+        choice,
+        eventDef,
+        playerRoll: { dice: diveResult.step1Roll, total: diveResult.step1Roll, baseMod: 0, extraMods: [], isNat20: diveResult.step1Roll === 20, isNat1: diveResult.step1Roll === 1 },
+        oppRoll:    { dice: 0, total: 0, baseMod: 0 },
+        step2Roll: diveResult.step2Roll,
+        isNat20: diveResult.step1Roll === 20,
+        isNat1:  diveResult.step1Roll === 1,
+      };
+    }
 
     // Player roll — average of yourStats
     const playerStatAvg = avgPlayerStat(choice.yourStats);
@@ -195,8 +234,6 @@ export const EventEngine = {
       if (Math.random() * 100 <= penChance) {
         finalNext = 'PENALTY';
         m.feed.push(`📋 ${m.minute}' — Contact in the box! The referee points to the spot!`);
-      } else if (choice.isDive) {
-        finalNext = 'DIVE_CAUGHT';
       }
     }
 
@@ -212,6 +249,15 @@ export const EventEngine = {
   pickEvent(chanceType, excludeIds = []) {
     const pos = GameState.player.position;
     const minute = GameState.match.minute;
+    const m = GameState.match;
+
+    // BOX_FOUL pending check — takes priority
+    if (m.pendingBoxFoul) {
+      m.pendingBoxFoul = false;
+      const boxFoulEv = EVENTS['BOX_FOUL'];
+      if (boxFoulEv && boxFoulEv.positions.includes(pos)) return boxFoulEv;
+    }
+
     const pool = EVENT_POOL.filter(e =>
       e.positions.includes(pos) &&
       e.chanceTypes.includes(chanceType) &&
@@ -256,6 +302,47 @@ function discoverWeapon(choice) {
     : WEAPONS[Math.floor(Math.random() * WEAPONS.length)];
   m.weaponDiscovered = true;
   m.discoveredWeapon = chosen.id;
+}
+
+function rollD20() {
+  return Math.floor(Math.random() * 20) + 1;
+}
+
+function resolveDive(choice, player, opponent) {
+  const intel     = player.stats.intelligence || player.stats.vision || 50;
+  const composure = player.stats.composure || 50;
+  const phys      = player.stats.physicality || 50;
+
+  const oppPos  = opponent.defender?.positioning  || 55;
+  const oppPhys = opponent.defender?.physicality  || 55;
+
+  // STEP 1 — Foul selling roll
+  const playerMod   = statToModifier((intel + composure) / 2);
+  const defenderMod = statToModifier((oppPos + oppPhys) / 2);
+  const DEFENDER_BONUS = 5;
+
+  let playerBonus = 0;
+  if (phys < 55)  playerBonus += 2;
+  if (phys >= 65) playerBonus -= 2;
+
+  const playerD20   = rollD20();
+  const defenderD20 = rollD20();
+
+  if (playerD20 === 20) return { result: 'PENALTY',    step1Roll: playerD20, step2Roll: null };
+  if (playerD20 === 1)  return { result: 'DIVE_CAUGHT', step1Roll: playerD20, step2Roll: null };
+
+  const playerTotal   = playerD20 + playerMod + playerBonus;
+  const defenderTotal = defenderD20 + defenderMod + DEFENDER_BONUS;
+
+  if (playerTotal <= defenderTotal) {
+    return { result: 'DIVE_CAUGHT', step1Roll: playerD20, step2Roll: null };
+  }
+
+  // STEP 2 — Referee decision (pure luck)
+  const refRoll = rollD20();
+  if (refRoll >= 16) return { result: 'PENALTY',    step1Roll: playerD20, step2Roll: refRoll };
+  if (refRoll >= 8)  return { result: 'PLAY_ON',    step1Roll: playerD20, step2Roll: refRoll };
+  return                     { result: 'DIVE_CAUGHT', step1Roll: playerD20, step2Roll: refRoll };
 }
 
 function calcPenaltyChance(choice, player) {
