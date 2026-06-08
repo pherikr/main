@@ -4,10 +4,20 @@ export const GameState = {
   // Player
   player: {
     name: '',
+    firstName: '',
+    lastName: '',
     nationality: '',
+    birthDay: 1,
+    birthMonth: 1,
     position: '',   // ST | CAM | LW | RW
     profile: '',    // pace_power | technician | powerhouse
+    archetype: '',
     weapon: null,   // weapon id or 'discover'
+    height: 178,
+    weight: 72,
+    appearance: {
+      facePreset: 1, skinTone: 2, hairStyle: 'short', hairColor: 'black', eyebrowStyle: 2,
+    },
     stats: {},
     overall: 0,
     backgroundMods: {},
