@@ -415,9 +415,7 @@ function giveCard(type) {
     }
     // Show yellow card notification inline then resume
     m.feed.push(`🟨 YELLOW CARD — ${GameState.player.name} is booked. ${m.minute}'. One more and you're off.`);
-    refreshFeed();
-    refreshHUD();
-    matchTimer = setTimeout(runMatchTick, 1200);
+    returnToMatch();
     return;
   }
 
