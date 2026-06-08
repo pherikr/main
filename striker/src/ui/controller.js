@@ -6,6 +6,7 @@ import { WEAPONS } from '../data/weapons.js';
 import { EventEngine } from '../engine/EventEngine.js';
 import { MatchEngine } from '../engine/MatchEngine.js';
 import { RatingEngine } from '../engine/RatingEngine.js';
+import { CELEBRATIONS, OPPOSITION_EVENTS } from '../data/events_flavor.js';
 import {
   creationScreen, statCardScreen, matchHUD, matchFeedPanel,
   eventScreen, outcomeScreen, weaponDiscoveryScreen, postMatchScreen, debugPanel,
@@ -254,6 +255,18 @@ function handleChoice(choice) {
   const result = EventEngine.resolve(pendingEventDef, choice);
   pendingResult = result;
 
+  // Step 5: manager relationship effect
+  if (choice.managerEffect) {
+    GameState.match.managerRelationship = Math.max(0, Math.min(100,
+      (GameState.match.managerRelationship || 50) + choice.managerEffect.relationship
+    ));
+    if (choice.managerEffect.confidence) {
+      GameState.match.confidence = Math.max(0, Math.min(100,
+        GameState.match.confidence + choice.managerEffect.confidence
+      ));
+    }
+  }
+
   const narrativeText = buildOutcomeNarrative(result);
 
   app.innerHTML = `
@@ -297,11 +310,22 @@ function handleContinue(result) {
     return;
   }
 
+  // OPPOSITION_ATTACK — treat as a new event, not a terminal
+  if (next === 'OPPOSITION_ATTACK') {
+    triggerEvent(OPPOSITION_EVENTS.OPPOSITION_ATTACK);
+    return;
+  }
+
   if (isTerminal(next)) {
     const entries = MatchEngine.resolveTerminal(next, m.minute);
     entries.forEach(e => m.feed.push(e));
     m.cascadeDepth = 0;
     m.cascadeBonus = false;
+    // Step 6: show celebration after GOAL
+    if (next === 'GOAL') {
+      showCelebrationScreen();
+      return;
+    }
     returnToMatch();
   } else {
     const nextEvent = EventEngine.getEvent(next);
@@ -317,6 +341,50 @@ function handleContinue(result) {
 function showWeaponDiscovery(weapon, result) {
   app.innerHTML = `<div id="match-wrapper">${weaponDiscoveryScreen(weapon)}</div>`;
   document.getElementById('wd-continue-btn').addEventListener('click', () => handleContinue(result));
+}
+
+function showCelebrationScreen() {
+  const minute = GameState.match.minute;
+  const shirtOff = CELEBRATIONS.find(c => c.id === 'shirt_off');
+  const others = CELEBRATIONS.filter(c => c.id !== 'shirt_off')
+    .sort(() => Math.random() - 0.5)
+    .slice(0, 3);
+  const pool = [shirtOff, ...others];
+
+  app.innerHTML = `
+    <div class="screen celebration-screen animate__animated animate__zoomIn">
+      <div class="cel-badge">⚽ GOAL!</div>
+      <div class="cel-minute">${minute}'</div>
+      <div class="cel-title">HOW DO YOU CELEBRATE?</div>
+      <div class="cel-choices">
+        ${pool.map(c => `
+          <button class="cel-choice ${c.isEgo ? 'ego' : ''}" data-cel="${c.id}">
+            <div class="cel-label">${c.label}</div>
+            <div class="cel-desc">${c.desc}</div>
+            ${c.yellowCardRisk ? '<div class="cel-warning">⚠️ Yellow card risk</div>' : ''}
+          </button>
+        `).join('')}
+      </div>
+    </div>
+  `;
+
+  document.querySelector('.cel-choices').addEventListener('click', e => {
+    const btn = e.target.closest('[data-cel]');
+    if (!btn) return;
+    const cel = CELEBRATIONS.find(c => c.id === btn.dataset.cel);
+    if (!cel) return;
+    if (cel.yellowCardRisk) {
+      GameState.match.yellows = (GameState.match.yellows || 0) + 1;
+      GameState.match.feed.push('🟨 Yellow card for the celebration!');
+    }
+    if (cel.ratingBonus) {
+      GameState.match.rating = Math.max(1, Math.min(10,
+        GameState.match.rating + cel.ratingBonus
+      ));
+    }
+    GameState.match.feed.push(`🎉 ${cel.narrative}`);
+    returnToMatch();
+  });
 }
 
 function returnToMatch() {
@@ -519,15 +587,18 @@ function buildOutcomeNarrative(result) {
 }
 
 function isTerminal(nextId) {
-  // All event IDs that cascade to another event (not a terminal resolution)
   const cascadeIds = [
-    'A1','A2','A3','A4','A5','A6','A7','A8',
+    'A1','A2','A3','A4','A5','A6','A7','A8','A9','A10',
     'A1_KEEPER','A2_HALF',
     'C1_OVERLAP','C2_SWITCH',
     'D1_CORNER_AGAINST','D2_TRACKING_BACK',
     'COUNTER_CASCADE',
     'SP_FREEKICK_CLOSE','SP_CORNER','SP_CORNER_HEADER',
     'PENALTY',
+    // Flavor events — not terminals
+    'MANAGER_TRACK_BACK','MANAGER_HALFTIME_BLAST','MANAGER_PRAISE',
+    'OPPOSITION_ATTACK',
+    'REF_FOUL_GIVEN_YOU','REF_OFFSIDE_CALL','REF_PENALTY_APPEAL','REF_LAST_MAN_FOUL',
     // Legacy IDs kept for safety
     'D1','SP1','SP2','C1','C2',
   ];

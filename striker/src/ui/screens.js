@@ -6,6 +6,7 @@ import { WEAPONS, DISCOVER_OPTION } from '../data/weapons.js';
 import { GameState } from '../engine/GameState.js';
 import { RatingEngine } from '../engine/RatingEngine.js';
 import { renderPitchMap } from './pitchMap.js';
+import { renderStatsBlock } from '../data/events_flavor.js';
 
 // ── CREATION ─────────────────────────────────────────────────────────────────
 
@@ -240,6 +241,7 @@ export function matchHUD() {
       </div>
     </div>
   </div>
+  ${renderStatsBlock(GameState)}
 </div>`;
 }
 

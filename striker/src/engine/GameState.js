@@ -36,6 +36,16 @@ export const GameState = {
     rattled: false,        // just came off nat 1
     substituted: false,    // player subbed off
     exhaustionSub: false,  // subbed due to stamina = 0
+    yellows: 0,
+    redCard: false,
+    sentOff: false,
+    subRisk: false,
+    managerRelationship: 50,
+    shotsOnTarget: 0,
+    shotsMissed: 0,
+    keeperAdvanced: false,
+    managerTrackBackFired: false,
+    managerPraiseFired: false,
   },
 
   // Opponent — Academy tier fixed stats
@@ -94,6 +104,16 @@ export const GameState = {
       rattled: false,
       substituted: false,
       exhaustionSub: false,
+      yellows: 0,
+      redCard: false,
+      sentOff: false,
+      subRisk: false,
+      managerRelationship: 50,
+      shotsOnTarget: 0,
+      shotsMissed: 0,
+      keeperAdvanced: false,
+      managerTrackBackFired: false,
+      managerPraiseFired: false,
     };
     this.debug.rolls = [];
     this.postMatch = { statChanges: {}, managerQuote: '', headline: '', offPitchEvent: null };

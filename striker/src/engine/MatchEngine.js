@@ -2,6 +2,7 @@ import { GameState } from './GameState.js';
 import { roll } from './dice.js';
 import { EventEngine } from './EventEngine.js';
 import { RatingEngine } from './RatingEngine.js';
+import { MANAGER_EVENTS, REFEREE_EVENTS, CARD_TERMINALS, OPPOSITION_EVENTS } from '../data/events_flavor.js';
 
 // Opponent team stats (Academy tier fixed)
 const OPPONENT = {
@@ -67,6 +68,12 @@ export const MatchEngine = {
     // Step 3: chance type
     const chanceType = pickChanceType(p.position);
 
+    // Check manager event triggers
+    const managerEvent = checkManagerEventTrigger(minute);
+    if (managerEvent) {
+      return { playerInvolved: true, eventDef: managerEvent, feedEntries };
+    }
+
     // Step 4: is player involved
     const involvedChance = calcInvolvementChance(chanceType, m, p);
     const involved = Math.random() * 100 < involvedChance;
@@ -78,6 +85,11 @@ export const MatchEngine = {
       if (res.goal) {
         m.score.us++;
         feedEntries.push(`⚽ GOAL! ${m.score.us}–${m.score.them} — Brilliant team move!`);
+      }
+      // 4% chance of referee event when not player-involved
+      if (Math.random() > 0.96) {
+        const refEvent = pickRefereeEvent(minute);
+        if (refEvent) return { playerInvolved: true, eventDef: refEvent, feedEntries };
       }
       return { playerInvolved: false, eventDef: null, feedEntries };
     }
@@ -119,9 +131,11 @@ export const MatchEngine = {
         m.momentum = Math.min(100, m.momentum + 10);
         break;
       case 'SAVED':
+        m.shotsOnTarget = (m.shotsOnTarget || 0) + 1;
         entries.push(`🧤 Keeper saves it! Good effort.`);
         break;
       case 'SAVED_REBOUND':
+        m.shotsOnTarget = (m.shotsOnTarget || 0) + 1;
         entries.push(`🧤 Keeper tips it — corner won!`);
         break;
       case 'CLEARED':
@@ -169,9 +183,11 @@ export const MatchEngine = {
         entries.push(`You're through on goal...`);
         break;
       case 'NEAR_MISS':
+        m.shotsMissed = (m.shotsMissed || 0) + 1;
         entries.push(`😬 So close! Ball clips the post and goes wide.`);
         break;
       case 'BLOCKED':
+        m.shotsMissed = (m.shotsMissed || 0) + 1;
         entries.push(`🚫 Defender throws himself in front — blocked!`);
         break;
       case 'CORNER_WON':
@@ -191,6 +207,42 @@ export const MatchEngine = {
         break;
       case 'POSSESSION_RESET':
         entries.push(`🔄 Possession retained. Team resets.`);
+        break;
+      case 'YELLOW_CARD_EVENT': {
+        const r1 = CARD_TERMINALS.YELLOW_CARD_EVENT.resolve(GameState);
+        r1.forEach(e => entries.push(e));
+        break;
+      }
+      case 'RED_CARD_EVENT': {
+        const r2 = CARD_TERMINALS.RED_CARD_EVENT.resolve(GameState);
+        r2.forEach(e => entries.push(e));
+        break;
+      }
+      case 'FOUL_GIVEN_DANGER': {
+        const r3 = CARD_TERMINALS.FOUL_GIVEN_DANGER.resolve(GameState);
+        r3.forEach(e => entries.push(e));
+        break;
+      }
+      case 'DIVE_CAUGHT': {
+        const r4 = CARD_TERMINALS.DIVE_CAUGHT.resolve(GameState);
+        r4.forEach(e => entries.push(e));
+        break;
+      }
+      case 'SECOND_HALF_BOOST': {
+        const r5 = CARD_TERMINALS.SECOND_HALF_BOOST.resolve(GameState);
+        r5.forEach(e => entries.push(e));
+        break;
+      }
+      case 'SUB_RISK': {
+        const r6 = CARD_TERMINALS.SUB_RISK.resolve(GameState);
+        r6.forEach(e => entries.push(e));
+        break;
+      }
+      case 'OPPOSITION_GOAL':
+        m.score.them++;
+        RatingEngine.apply('caught_upfield');
+        entries.push(`😤 ${m.score.us}–${m.score.them} — They score. Opposition attack succeeds.`);
+        m.momentum = Math.max(0, m.momentum - 20);
         break;
       default:
         entries.push(`${minute}' — Play continues.`);
@@ -249,6 +301,39 @@ function resolveBackground(chanceType, minute) {
   }
   feed.push(`${minute}' — Chance comes to nothing. Play resets.`);
   return { goal: false, feed };
+}
+
+function checkManagerEventTrigger(minute) {
+  const m = GameState.match;
+  if (minute === 45 && MANAGER_EVENTS.MANAGER_HALFTIME_BLAST.triggerCondition(GameState)) {
+    return MANAGER_EVENTS.MANAGER_HALFTIME_BLAST;
+  }
+  if (!m.managerTrackBackFired && minute >= 30 && Math.random() > 0.94) {
+    if (MANAGER_EVENTS.MANAGER_TRACK_BACK.triggerCondition(GameState)) {
+      m.managerTrackBackFired = true;
+      return MANAGER_EVENTS.MANAGER_TRACK_BACK;
+    }
+  }
+  if (!m.managerPraiseFired && minute >= 60 && Math.random() > 0.96) {
+    if (MANAGER_EVENTS.MANAGER_PRAISE.triggerCondition(GameState)) {
+      m.managerPraiseFired = true;
+      return MANAGER_EVENTS.MANAGER_PRAISE;
+    }
+  }
+  return null;
+}
+
+function pickRefereeEvent(minute) {
+  const m = GameState.match;
+  const pool = [
+    REFEREE_EVENTS.REF_FOUL_GIVEN_YOU,
+    REFEREE_EVENTS.REF_OFFSIDE_CALL,
+    REFEREE_EVENTS.REF_PENALTY_APPEAL,
+  ];
+  if (minute >= 60 && m.yellows >= 1) {
+    pool.push(REFEREE_EVENTS.REF_LAST_MAN_FOUL);
+  }
+  return pool[Math.floor(Math.random() * pool.length)];
 }
 
 function resolveOpponentAttack(minute) {

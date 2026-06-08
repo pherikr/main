@@ -254,3 +254,95 @@ input[type="text"]::placeholder { color: var(--muted); }
   color: #fb923c;
   line-height: 1.5;
 }
+
+/* ── STATS BLOCK ─────────────────────────────────────────────────────── */
+.hud-stats-block {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 12px;
+  background: rgba(0,0,0,0.5);
+  border-top: 0.5px solid rgba(255,255,255,0.08);
+}
+.hsb-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 28px;
+}
+.hsb-val {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: #f0ede6;
+  line-height: 1;
+}
+.hsb-label {
+  font-size: 8px;
+  color: rgba(255,255,255,0.35);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  font-family: 'Barlow Condensed', sans-serif;
+}
+.stat-card-badge { font-size: 14px; }
+
+/* ── CELEBRATION SCREEN ──────────────────────────────────────────────── */
+.celebration-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px;
+  background: radial-gradient(ellipse at center, #1a3a0a, #0b0c0f);
+  min-height: 100%;
+}
+.cel-badge {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 52px;
+  color: #e8ff47;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.cel-minute {
+  font-size: 14px;
+  color: rgba(255,255,255,0.4);
+  margin-bottom: 16px;
+  font-family: 'Barlow Condensed', sans-serif;
+  letter-spacing: .1em;
+}
+.cel-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px;
+  color: #f0ede6;
+  margin-bottom: 20px;
+  letter-spacing: .06em;
+}
+.cel-choices {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cel-choice {
+  width: 100%;
+  padding: 14px 16px;
+  background: rgba(255,255,255,0.06);
+  border: 0.5px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: left;
+  transition: all .15s;
+}
+.cel-choice.ego { border-color: rgba(232,255,71,0.2); }
+.cel-choice:active { transform: scale(.98); background: rgba(232,255,71,0.08); }
+.cel-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #f0ede6;
+  margin-bottom: 3px;
+}
+.cel-desc { font-size: 12px; color: rgba(255,255,255,0.4); }
+.cel-warning { font-size: 11px; color: #facc15; margin-top: 4px; }
