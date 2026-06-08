@@ -185,17 +185,28 @@ export const EventEngine = {
     }
 
     const cascade = eventDef.cascades[choice.id];
-    let next = success ? cascade.success : cascade.failure;
+    let finalNext = success ? cascade.success : cascade.failure;
 
     // Fix 3: FOUL_AGAINST in the box → promote to PENALTY
-    if (next === 'FOUL_AGAINST') {
-      next = 'PENALTY_TRIGGER';
+    if (finalNext === 'FOUL_AGAINST') {
+      finalNext = 'PENALTY_TRIGGER';
+    }
+
+    // Fix 6: penalty chance on failures in the box
+    if (!success && !isNat1 && eventDef.inBox) {
+      const penChance = calcPenaltyChance(choice, p);
+      if (Math.random() * 100 <= penChance) {
+        finalNext = 'PENALTY';
+        m.feed.push(`📋 ${m.minute}' — Contact in the box! The referee points to the spot!`);
+      } else if (choice.isDive) {
+        finalNext = 'DIVE_CAUGHT';
+      }
     }
 
     return {
       success, isNat20, isNat1,
       playerRoll, oppRoll,
-      next,
+      next: finalNext,
       choice,
       eventDef,
     };
@@ -203,10 +214,12 @@ export const EventEngine = {
 
   pickEvent(chanceType, excludeIds = []) {
     const pos = GameState.player.position;
+    const minute = GameState.match.minute;
     const pool = EVENT_POOL.filter(e =>
       e.positions.includes(pos) &&
       e.chanceTypes.includes(chanceType) &&
-      !excludeIds.includes(e.id)
+      !excludeIds.includes(e.id) &&
+      (!e.minuteGate || (minute >= e.minuteGate.min && (!e.minuteGate.max || minute <= e.minuteGate.max)))
     );
     if (!pool.length) return null;
     const entry = pool[Math.floor(Math.random() * pool.length)];
@@ -238,6 +251,7 @@ function drainStamina() {
 
 function discoverWeapon(choice) {
   const m = GameState.match;
+  if (m.weaponDiscovered) return;  // Fix 1: guard — never fire twice
   const pitchType = choice.pitchType || '';
   const candidates = WEAPONS.filter(w => w.matches?.includes(pitchType));
   const chosen = candidates.length
@@ -245,4 +259,15 @@ function discoverWeapon(choice) {
     : WEAPONS[Math.floor(Math.random() * WEAPONS.length)];
   m.weaponDiscovered = true;
   m.discoveredWeapon = chosen.id;
+}
+
+function calcPenaltyChance(choice, player) {
+  const intel = player.stats.intelligence || player.stats.vision || 50;
+  const phys  = player.stats.physicality || 50;
+  let chance = 8;
+  chance += Math.max(0, (intel - 50) / 10) * 2;
+  chance += Math.max(0, (55 - phys) / 10) * 3;
+  if (choice.isDive)  chance += 15;
+  if (choice.isEgo)   chance -= 3;
+  return Math.max(2, Math.min(35, chance));
 }

@@ -346,3 +346,92 @@ input[type="text"]::placeholder { color: var(--muted); }
 }
 .cel-desc { font-size: 12px; color: rgba(255,255,255,0.4); }
 .cel-warning { font-size: 11px; color: #facc15; margin-top: 4px; }
+
+/* ── BENCH POV ───────────────────────────────────────────────────────── */
+.bench-pov {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px 20px;
+  text-align: center;
+}
+.bench-icon { font-size: 48px; margin-bottom: 8px; }
+.bench-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 36px;
+  color: #f0ede6;
+  margin-bottom: 8px;
+}
+.bench-sub {
+  font-size: 13px;
+  color: rgba(255,255,255,0.4);
+  max-width: 280px;
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+.bench-feed-label {
+  font-size: 9px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.25);
+  margin-bottom: 10px;
+  font-family: 'Barlow Condensed', sans-serif;
+}
+.bench-feed-entry {
+  font-size: 12px;
+  color: rgba(255,255,255,0.45);
+  padding: 5px 0;
+  border-bottom: 0.5px solid rgba(255,255,255,0.06);
+  text-align: left;
+}
+
+/* ── MOMENT FLASH ────────────────────────────────────────────────────── */
+.moment-flash {
+  position: absolute;
+  inset: 0;
+  z-index: 90;
+  background: rgba(0,0,0,0.88);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.mf-icon  { font-size: 64px; margin-bottom: 8px; }
+.mf-word  {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 72px;
+  color: #e8ff47;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+.mf-name  { font-family: 'Barlow Condensed', sans-serif; font-size: 22px; color: #f0ede6; font-weight: 700; }
+.mf-minute{ font-size: 13px; color: rgba(255,255,255,0.4); margin-top: 4px; }
+.mf-score {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 28px;
+  color: #f0ede6;
+  margin-top: 8px;
+}
+
+/* ── OUTCOME RESULT CARD ─────────────────────────────────────────────── */
+.outcome-result-card {
+  margin: 16px 20px;
+  padding: 16px;
+  border-radius: 10px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.outcome-result-card.success {
+  background: rgba(74,222,128,0.08);
+  border: 0.5px solid rgba(74,222,128,0.25);
+}
+.outcome-result-card.failure {
+  background: rgba(239,68,68,0.08);
+  border: 0.5px solid rgba(239,68,68,0.25);
+}
+.orc-icon { font-size: 20px; flex-shrink: 0; margin-top: 2px; }
+.orc-narrative { font-size: 14px; line-height: 1.6; color: #f0ede6; font-style: italic; }
+
+#match-wrapper { position: relative; }

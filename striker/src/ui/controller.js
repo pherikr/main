@@ -181,6 +181,13 @@ function runMatchTick() {
     return;
   }
 
+  // Fix 2: bench POV for red card
+  if (m.sentOff && !m.benchShown) {
+    m.benchShown = true;
+    showBenchPOV('redcard');
+    return;
+  }
+
   // Fix 4: stamina 0 = substitution — match continues without player events
   if (m.stamina <= 0 && !m.substituted) {
     m.substituted = true;
@@ -189,8 +196,12 @@ function runMatchTick() {
     m.feed.push(`🚑 ${m.minute}' — You're being substituted. Your legs gave out. The manager has no choice.`);
     refreshFeed();
     refreshHUD();
-    // Continue match sim but player never gets involved again
-    matchTimer = setTimeout(runMatchTick, 1200);
+    if (!m.benchShown) {
+      m.benchShown = true;
+      showBenchPOV('sub');
+    } else {
+      matchTimer = setTimeout(runMatchTick, 1200);
+    }
     return;
   }
 
@@ -321,10 +332,14 @@ function handleContinue(result) {
     entries.forEach(e => m.feed.push(e));
     m.cascadeDepth = 0;
     m.cascadeBonus = false;
-    // Step 6: show celebration after GOAL
+    // Fix 3: flash for GOAL and ASSIST
     if (next === 'GOAL') {
+      showMomentFlash('GOAL');
       showCelebrationScreen();
       return;
+    }
+    if (next === 'ASSIST') {
+      showMomentFlash('ASSIST');
     }
     returnToMatch();
   } else {
@@ -339,8 +354,52 @@ function handleContinue(result) {
 }
 
 function showWeaponDiscovery(weapon, result) {
+  GameState.player.weapon = weapon.id;  // Fix 1: set permanently so it never retriggers
+  GameState.match.weaponDiscovered = true;
   app.innerHTML = `<div id="match-wrapper">${weaponDiscoveryScreen(weapon)}</div>`;
   document.getElementById('wd-continue-btn').addEventListener('click', () => handleContinue(result));
+}
+
+// Fix 2: bench POV when substituted or sent off
+function showBenchPOV(reason) {
+  const m = GameState.match;
+  renderMatch();
+  const feedArea = document.getElementById('match-feed-area');
+  if (feedArea) {
+    feedArea.innerHTML = `
+      <div class="bench-pov">
+        <div class="bench-icon">${reason === 'redcard' ? '🟥' : '🚑'}</div>
+        <div class="bench-title">${reason === 'redcard' ? 'SENT OFF' : 'SUBSTITUTED'}</div>
+        <div class="bench-sub">${reason === 'redcard'
+          ? 'You walk down the tunnel. The game continues without you. Your team plays the rest with ten men.'
+          : 'Your legs gave out. You watch from the dugout as the final minutes play out.'
+        }</div>
+        <div class="bench-feed-label">FROM THE BENCH</div>
+        <div class="bench-live-feed" id="bench-live-feed">
+          ${m.feed.slice(-5).map(f => `<div class="bench-feed-entry">${f}</div>`).join('')}
+        </div>
+      </div>
+    `;
+  }
+  matchTimer = setTimeout(runMatchTick, 1200);
+}
+
+// Fix 3: goal/assist flash overlay
+function showMomentFlash(type) {
+  const isGoal = type === 'GOAL';
+  const wrapper = document.getElementById('match-wrapper');
+  if (!wrapper) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'moment-flash animate__animated animate__zoomIn';
+  overlay.innerHTML = `
+    <div class="mf-icon">${isGoal ? '⚽' : '🎯'}</div>
+    <div class="mf-word">${isGoal ? 'GOAL!' : 'ASSIST!'}</div>
+    <div class="mf-name">${GameState.player.name}</div>
+    <div class="mf-minute">${GameState.match.minute}'</div>
+    <div class="mf-score">${GameState.match.score.us} — ${GameState.match.score.them}</div>
+  `;
+  wrapper.appendChild(overlay);
+  setTimeout(() => overlay.remove(), 2200);
 }
 
 function showCelebrationScreen() {
@@ -595,6 +654,10 @@ function isTerminal(nextId) {
     'COUNTER_CASCADE',
     'SP_FREEKICK_CLOSE','SP_CORNER','SP_CORNER_HEADER',
     'PENALTY',
+    // v3 new cascade IDs
+    'LATE_ENFORCER','LATE_LAST_CHANCE',
+    'GAUNTLET_DEF1','GAUNTLET_DEF2','GAUNTLET_DEF3',
+    'KEEPER_ADVANCE',
     // Flavor events — not terminals
     'MANAGER_TRACK_BACK','MANAGER_HALFTIME_BLAST','MANAGER_PRAISE',
     'OPPOSITION_ATTACK',

@@ -327,7 +327,10 @@ export function outcomeScreen(result, narrativeText) {
 <div class="screen outcome-screen animate__animated animate__fadeIn">
   ${badge}
 
-  <div class="outcome-narrative">${narrativeText}</div>
+  <div class="outcome-result-card ${success ? 'success' : 'failure'}">
+    <div class="orc-icon">${isNat20 ? '⚡' : isNat1 ? '💀' : success ? '✓' : '✗'}</div>
+    <div class="orc-narrative">${narrativeText}</div>
+  </div>
 
   <div class="dice-display">
     <div class="dice-block">
