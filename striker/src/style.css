@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@400;600;700&display=swap');
 @import 'animate.css';
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -37,13 +37,12 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 input[type="text"] { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-family: 'Barlow', sans-serif; font-size: 1rem; padding: 0.75rem 1rem; outline: none; transition: border-color 0.2s; }
 input[type="text"]:focus { border-color: var(--accent); }
 input[type="text"]::placeholder { color: var(--muted); }
-.flag-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.4rem; }
-.flag-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.6rem 0.2rem; cursor: pointer; color: var(--text); font-size: 0.7rem; text-align: center; transition: border-color 0.2s, background 0.2s; display: flex; flex-direction: column; align-items: center; gap: 0.25rem; }
-.flag-btn .flag { font-size: 2rem; line-height: 1; }
-.flag-btn .nation-name { font-size: 0.58rem; color: var(--muted); line-height: 1.2; }
-.flag-btn:hover { border-color: var(--accent); background: rgba(99,102,241,0.08); }
-.flag-btn.selected { border-color: var(--accent); background: rgba(99,102,241,0.18); }
-.flag-btn.selected .flag { filter: drop-shadow(0 0 6px rgba(99,102,241,0.7)); }
+.flag-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.flag-btn { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 10px 6px; background: rgba(255,255,255,0.04); border: 0.5px solid rgba(255,255,255,0.08); border-radius: 8px; cursor: pointer; transition: all .15s; }
+.flag-btn:hover { border-color: rgba(232,255,71,0.4); background: rgba(232,255,71,0.05); }
+.flag-btn.selected { border-color: #e8ff47; background: rgba(232,255,71,0.1); box-shadow: 0 0 10px rgba(232,255,71,0.15); }
+.flag-img { width: 40px; height: 27px; border-radius: 3px; display: block; object-fit: cover; }
+.flag-name { font-size: 9px; color: rgba(255,255,255,0.45); text-align: center; font-family: 'Barlow Condensed', sans-serif; letter-spacing: .04em; text-transform: uppercase; line-height: 1.2; }
 .button-row { display: flex; gap: 0.5rem; }
 .choice-btn { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.75rem; color: var(--text); font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; letter-spacing: 0.05em; cursor: pointer; transition: border-color 0.2s, background 0.2s; }
 .choice-btn:hover { border-color: var(--accent); }
@@ -436,3 +435,45 @@ input[type="text"]::placeholder { color: var(--muted); }
 .orc-narrative { font-size: 14px; line-height: 1.6; color: #f0ede6; font-style: italic; }
 
 #match-wrapper { position: relative; }
+
+/* ── CHOICE CARD STATS ROW ───────────────────────────────────────────── */
+.cc-stats-row { display: flex; align-items: center; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.cc-stats-yours, .cc-stats-opp { display: flex; gap: 4px; flex-wrap: wrap; }
+.cc-stat-chip { font-size: 10px; padding: 2px 7px; border-radius: 4px; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; letter-spacing: .03em; }
+.cc-stat-chip.yours { background: rgba(74,222,128,0.12); color: #4ade80; border: 0.5px solid rgba(74,222,128,0.25); }
+.cc-stat-chip.opp   { background: rgba(239,68,68,0.12);  color: #f87171; border: 0.5px solid rgba(239,68,68,0.25); }
+.cc-vs { font-size: 9px; color: rgba(255,255,255,0.25); font-family: 'Barlow Condensed', sans-serif; letter-spacing: .1em; text-transform: uppercase; flex-shrink: 0; }
+
+/* ── RED CARD SCREEN ─────────────────────────────────────────────────── */
+.redcard-screen {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 40px 24px; background: radial-gradient(ellipse at center, #3a0a0a, #0b0c0f);
+  min-height: 100%; text-align: center;
+}
+@keyframes popIn { from { transform: scale(0.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.rc-card   { font-size: 80px; margin-bottom: 12px; animation: popIn .4s cubic-bezier(.34,1.56,.64,1); }
+.rc-title  { font-family: 'Bebas Neue', sans-serif; font-size: 56px; color: #ef4444; line-height: 1; margin-bottom: 4px; }
+.rc-name   { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; color: #f0ede6; font-weight: 700; }
+.rc-minute { font-size: 13px; color: rgba(255,255,255,0.35); margin: 4px 0 12px; font-family: 'Barlow Condensed', sans-serif; }
+.rc-text   { font-size: 14px; color: rgba(255,255,255,0.5); max-width: 280px; line-height: 1.6; margin-bottom: 20px; }
+.rc-question { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: #f0ede6; margin-bottom: 14px; }
+.rc-choices  { width: 100%; display: flex; flex-direction: column; gap: 8px; }
+.rc-btn { width: 100%; padding: 14px 16px; text-align: left; background: rgba(255,255,255,0.05); border: 0.5px solid rgba(255,255,255,0.1); border-radius: 10px; cursor: pointer; transition: all .15s; }
+.rc-btn.ego { border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.06); }
+.rc-btn:active { transform: scale(.98); }
+.rc-btn-label { font-family: 'Barlow Condensed', sans-serif; font-size: 15px; font-weight: 700; text-transform: uppercase; color: #f0ede6; margin-bottom: 3px; }
+.rc-btn-desc  { font-size: 11px; color: rgba(255,255,255,0.35); }
+.bench-pov-header { text-align: center; padding: 20px; border-bottom: 0.5px solid rgba(255,255,255,0.06); margin-bottom: 12px; }
+.bench-pov-icon  { font-size: 32px; margin-bottom: 6px; }
+.bench-pov-title { font-family: 'Bebas Neue', sans-serif; font-size: 28px; color: #f0ede6; }
+.bench-pov-sub   { font-size: 12px; color: rgba(255,255,255,0.3); margin-top: 3px; font-family: 'Barlow Condensed', sans-serif; }
+
+/* ── OPPOSITION GOAL POPUP ───────────────────────────────────────────── */
+.opp-goal-overlay {
+  position: absolute; inset: 0; z-index: 85; background: rgba(0,0,0,0.88);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 32px; pointer-events: none;
+}
+.og-icon  { font-size: 52px; margin-bottom: 10px; }
+.og-score { font-family: 'Bebas Neue', sans-serif; font-size: 58px; color: #ef4444; line-height: 1; margin-bottom: 14px; }
+.og-narrative { font-size: 15px; color: rgba(255,255,255,0.6); text-align: center; max-width: 280px; line-height: 1.6; font-style: italic; }

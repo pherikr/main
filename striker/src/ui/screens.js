@@ -8,6 +8,29 @@ import { RatingEngine } from '../engine/RatingEngine.js';
 import { renderPitchMap } from './pitchMap.js';
 import { renderStatsBlock } from '../data/events_flavor.js';
 
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+
+function formatStatName(key) {
+  const names = {
+    dribbling: 'DRI', agility: 'AGI', finishing: 'FIN',
+    composure: 'CMP', vision: 'VIS', longPassing: 'LPS',
+    shortPassing: 'SPS', physicality: 'PHY', pace: 'PAC',
+    balance: 'BAL', ballControl: 'CTL', longShots: 'LSH',
+    heading: 'HED', acceleration: 'ACC', intelligence: 'INT',
+    stamina: 'STA', shortTackle: 'STK', slideTackle: 'SLD',
+    positioning: 'POS', gk_diving: 'DIV', gk_reflexes: 'REF',
+    gk_composure: 'GKC', gk_handling: 'HND',
+  };
+  return names[key] || key.toUpperCase().slice(0, 3);
+}
+
+function getOppStat(key) {
+  const opp = GameState.opponent;
+  if (!opp) return '?';
+  if (key.startsWith('gk_')) return opp.gk?.[key] ?? '?';
+  return opp.defender?.[key] ?? '?';
+}
+
 // ── CREATION ─────────────────────────────────────────────────────────────────
 
 export function creationScreen() {
@@ -31,9 +54,9 @@ export function creationScreen() {
       <label>Nationality</label>
       <div class="flag-grid" id="nation-grid">
         ${NATIONS.map(n => `
-          <button class="flag-btn" data-nation="${n.id}" title="${n.name}">
-            <span class="flag">${n.flag}</span>
-            <span class="nation-name">${n.name}</span>
+          <button class="flag-btn" data-nation="${n.id}">
+            <img class="flag-img" src="https://flagcdn.com/w40/${n.code}.png" alt="${n.name}" loading="lazy">
+            <span class="flag-name">${n.name}</span>
           </button>
         `).join('')}
       </div>
@@ -301,7 +324,15 @@ export function eventScreen(eventDef, filteredChoices) {
           ${boosted ? `<span class="cc-boost">${weapon.icon} BOOSTED</span>` : ''}
         </div>
         <div class="cc-desc">${c.desc}</div>
-        <div class="cc-stat">Uses: <strong>${(c.yourStats || [c.stat]).map(s => s.replace('_',' ').toUpperCase()).join(' + ')}</strong></div>
+        <div class="cc-stats-row">
+          <div class="cc-stats-yours">
+            ${(c.yourStats||[]).map(s => `<span class="cc-stat-chip yours">${formatStatName(s)}&nbsp;<strong>${p.stats[s] || '?'}</strong></span>`).join('')}
+          </div>
+          <span class="cc-vs">vs</span>
+          <div class="cc-stats-opp">
+            ${(c.oppStats||[]).map(s => `<span class="cc-stat-chip opp">${formatStatName(s)}&nbsp;<strong>${getOppStat(s)}</strong></span>`).join('')}
+          </div>
+        </div>
       </button>`;
     }).join('')}
   </div>
