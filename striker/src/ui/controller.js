@@ -8,10 +8,13 @@ import { MatchEngine } from '../engine/MatchEngine.js';
 import { RatingEngine } from '../engine/RatingEngine.js';
 import { CELEBRATIONS, OPPOSITION_EVENTS } from '../data/events_flavor.js';
 import {
-  creationScreen, statCardScreen, matchHUD, matchFeedPanel,
+  matchHUD, matchFeedPanel,
   eventScreen, outcomeScreen, weaponDiscoveryScreen, postMatchScreen, debugPanel,
   backgroundStep1Screen, backgroundStep2Screen, youthEventScreen, youthEventResultScreen, academyXIScreen,
+  renderPortrait, renderCreatorCard, SKIN_TONES, HAIR_COLORS, HAIR_STYLES_LABELS,
+  POSITION_DATA, ARCHETYPES, calcOverallFromStats,
 } from './screens.js';
+import { NATIONS } from '../data/nations.js';
 import { BACKGROUNDS, SCHOOL_FOCUS, YOUTH_EVENTS } from '../data/background.js';
 
 const app = document.getElementById('app');
@@ -38,98 +41,599 @@ window.__debugCard = (type) => {
   }
 };
 
-// ── CREATION ─────────────────────────────────────────────────────────────────
+// ── CREATOR STATE ─────────────────────────────────────────────────────────────
+
+const creatorState = {
+  firstName: '',
+  lastName:  '',
+  nationality: '',
+  birthDay:   1,
+  birthMonth: 1,
+  facePreset:   1,
+  skinTone:     2,
+  hairStyle:    'short',
+  hairColor:    'black',
+  eyebrowStyle: 2,
+  height: 178,
+  weight:  72,
+  position:  '',
+  archetype: '',
+  weapon:    'discover',
+};
+
+// ── TOAST ─────────────────────────────────────────────────────────────────────
+
+function showToast(msg, icon = '') {
+  const el = document.createElement('div');
+  el.className = 'creator-toast';
+  el.textContent = `${icon} ${msg}`.trim();
+  document.body.appendChild(el);
+  setTimeout(() => el.classList.add('toast-show'), 10);
+  setTimeout(() => { el.classList.remove('toast-show'); setTimeout(() => el.remove(), 300); }, 2500);
+}
+
+// ── CREATOR SHELL + REFRESH ───────────────────────────────────────────────────
+
+function creatorShell(step, content) {
+  const dots = Array.from({length:6}, (_,i) =>
+    `<div class="creator-dot ${i+1 < step ? 'done' : i+1 === step ? 'active' : ''}"></div>`
+  ).join('');
+  return `
+<div class="creator-shell animate__animated animate__fadeIn">
+  <div class="creator-topbar">
+    <button class="creator-back-btn" id="creator-back">←</button>
+    <span class="creator-step-label">Step ${step} of 6</span>
+    <div class="creator-dots">${dots}</div>
+  </div>
+  <div class="creator-body">
+    <div class="creator-left">${content}</div>
+    <div class="creator-right" id="creator-right">
+      ${renderCreatorRight()}
+    </div>
+  </div>
+  <div class="creator-footer">
+    <button class="cta-btn" id="creator-continue" style="width:100%">Continue →</button>
+  </div>
+</div>`;
+}
+
+function renderCreatorRight() {
+  return renderPortrait(creatorState) + renderCreatorCard(creatorState);
+}
+
+function refreshCreatorRight() {
+  const el = document.getElementById('creator-right');
+  if (el) el.innerHTML = renderCreatorRight();
+}
+
+function wireFooter(validate, nextFn) {
+  document.getElementById('creator-continue')?.addEventListener('click', () => {
+    if (validate()) nextFn();
+  });
+  document.getElementById('creator-back')?.addEventListener('click', () => {
+    const stepFns = [null, null, showCreatorStep1, showCreatorStep2,
+                     showCreatorStep3, showCreatorStep4, showCreatorStep5];
+    const label = document.querySelector('.creator-step-label')?.textContent || '';
+    const cur = parseInt(label.match(/\d+/)?.[0] || '1');
+    if (cur > 1 && stepFns[cur]) stepFns[cur]();
+    else if (cur === 1) startGame();
+  });
+}
+
+// ── CREATION — STEP 1: IDENTITY ───────────────────────────────────────────────
 
 function showCreation() {
-  app.innerHTML = creationScreen();
-  const btn = document.getElementById('create-player-btn');
-
-  // Selection state
-  const sel = { name: '', nation: '', position: '', profile: '', weapon: '' };
-
-  document.getElementById('player-name').addEventListener('input', e => {
-    sel.name = e.target.value.trim();
-    validate();
-  });
-
-  document.getElementById('nation-grid').addEventListener('click', e => {
-    const b = e.target.closest('[data-nation]');
-    if (!b) return;
-    sel.nation = b.dataset.nation;
-    document.querySelectorAll('.flag-btn').forEach(x => x.classList.remove('selected'));
-    b.classList.add('selected');
-    validate();
-  });
-
-  document.getElementById('position-grid').addEventListener('click', e => {
-    const b = e.target.closest('[data-position]');
-    if (!b) return;
-    sel.position = b.dataset.position;
-    document.querySelectorAll('[data-position]').forEach(x => x.classList.remove('selected'));
-    b.classList.add('selected');
-    validate();
-  });
-
-  document.getElementById('profile-grid').addEventListener('click', e => {
-    const b = e.target.closest('[data-profile]');
-    if (!b) return;
-    sel.profile = b.dataset.profile;
-    document.querySelectorAll('[data-profile]').forEach(x => x.classList.remove('selected'));
-    b.classList.add('selected');
-    validate();
-  });
-
-  document.getElementById('weapon-grid').addEventListener('click', e => {
-    const b = e.target.closest('[data-weapon]');
-    if (!b) return;
-    sel.weapon = b.dataset.weapon;
-    document.querySelectorAll('[data-weapon]').forEach(x => x.classList.remove('selected'));
-    b.classList.add('selected');
-    validate();
-  });
-
-  function validate() {
-    btn.disabled = !(sel.name && sel.nation && sel.position && sel.profile && sel.weapon);
-  }
-
-  btn.addEventListener('click', () => {
-    if (btn.disabled) return;
-    buildPlayer(sel);
-    showBackgroundStep1();
-  });
+  showCreatorStep1();
 }
 
-function buildPlayer(sel) {
-  const profile = PROFILES.find(p => p.id === sel.profile);
-  const stats = {};
-  for (const [stat, [min, max]] of Object.entries(profile.stats)) {
-    stats[stat] = Math.floor(Math.random() * (max - min + 1)) + min;
+function showCreatorStep1() {
+  app.innerHTML = creatorShell(1, `
+    <div class="step-title">
+      <h2>Who Are You?</h2>
+      <p class="step-sub">Your identity. The name they'll chant.</p>
+    </div>
+    <div class="field-group">
+      <label class="field-label">First Name</label>
+      <input class="creator-input" id="inp-firstname" type="text" placeholder="First name..." maxlength="14"
+             value="${creatorState.firstName}" autocomplete="off"/>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Last Name</label>
+      <input class="creator-input" id="inp-lastname" type="text" placeholder="Last name..." maxlength="18"
+             value="${creatorState.lastName}" autocomplete="off"/>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Birthday</label>
+      <div class="birthday-row">
+        <input class="creator-input birthday-inp" id="inp-day" type="number" placeholder="Day" min="1" max="31" value="${creatorState.birthDay || ''}"/>
+        <select class="creator-input birthday-sel" id="inp-month">
+          ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+            .map((m,i) => `<option value="${i+1}" ${creatorState.birthMonth===i+1?'selected':''}>${m}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field-note">Season 2025/26 — You are 16 years old</div>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Nationality</label>
+      <div class="nation-search-wrap">
+        <input class="creator-input" id="nation-search" placeholder="Search nationality..." autocomplete="off"/>
+      </div>
+      <div class="nation-grid-v2" id="nation-grid-v2">
+        ${NATIONS.map(n => `
+          <button class="nation-btn ${creatorState.nationality===n.id?'selected':''}" data-nation="${n.id}">
+            <img class="nation-flag-img" src="https://flagcdn.com/w40/${n.code}.png" alt="" loading="lazy"/>
+            <span class="nation-name">${n.name}</span>
+          </button>
+        `).join('')}
+      </div>
+    </div>
+  `);
+  wireStep1();
+}
+
+function wireStep1() {
+  const update = () => {
+    creatorState.firstName  = document.getElementById('inp-firstname')?.value || '';
+    creatorState.lastName   = document.getElementById('inp-lastname')?.value  || '';
+    creatorState.birthDay   = parseInt(document.getElementById('inp-day')?.value)   || 1;
+    creatorState.birthMonth = parseInt(document.getElementById('inp-month')?.value) || 1;
+    refreshCreatorRight();
+  };
+  document.getElementById('inp-firstname')?.addEventListener('input', update);
+  document.getElementById('inp-lastname')?.addEventListener('input',  update);
+  document.getElementById('inp-day')?.addEventListener('input',       update);
+  document.getElementById('inp-month')?.addEventListener('change',    update);
+
+  document.getElementById('nation-search')?.addEventListener('input', e => {
+    const q = e.target.value.toLowerCase();
+    document.querySelectorAll('.nation-btn').forEach(btn => {
+      btn.style.display = btn.querySelector('.nation-name').textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+  });
+
+  document.getElementById('nation-grid-v2')?.addEventListener('click', e => {
+    const btn = e.target.closest('.nation-btn');
+    if (!btn) return;
+    creatorState.nationality = btn.dataset.nation;
+    document.querySelectorAll('.nation-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    refreshCreatorRight();
+  });
+
+  wireFooter(() => {
+    if (!creatorState.firstName)  { showToast('Enter your first name', '⚠️'); return false; }
+    if (!creatorState.nationality){ showToast('Select your nationality', '⚠️'); return false; }
+    return true;
+  }, showCreatorStep2);
+}
+
+// ── STEP 2: APPEARANCE ────────────────────────────────────────────────────────
+
+function showCreatorStep2() {
+  app.innerHTML = creatorShell(2, `
+    <div class="step-title">
+      <h2>Your Look</h2>
+      <p class="step-sub">Build your player from the outside in.</p>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Skin Tone</label>
+      <div class="skin-row">
+        ${Object.entries(SKIN_TONES).map(([k,v]) => `
+          <button class="skin-btn ${creatorState.skinTone==k?'selected':''}" data-skin="${k}"
+                  style="background:${v.base};border-color:${creatorState.skinTone==k?'#e8ff47':'rgba(255,255,255,0.1)'}"></button>
+        `).join('')}
+      </div>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Face Preset</label>
+      <div class="face-row">
+        ${[1,2,3,4,5].map(i => `
+          <button class="face-btn ${creatorState.facePreset===i?'selected':''}" data-face="${i}">
+            ${['Oval','Round','Square','Angular','Slim'][i-1]}
+          </button>
+        `).join('')}
+      </div>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Hair Style</label>
+      <div class="option-chips" id="hair-style-chips">
+        ${Object.entries(HAIR_STYLES_LABELS).map(([id, label]) => `
+          <button class="chip-btn ${creatorState.hairStyle===id?'selected':''}" data-hairstyle="${id}">${label}</button>
+        `).join('')}
+      </div>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Hair Colour</label>
+      <div class="hair-color-row" id="hair-color-row">
+        ${Object.entries(HAIR_COLORS).map(([id,hex]) => `
+          <button class="hair-col-btn ${creatorState.hairColor===id?'selected':''}"
+                  data-haircolor="${id}"
+                  style="background:${hex};border-color:${creatorState.hairColor===id?'#e8ff47':'rgba(255,255,255,0.15)'}"></button>
+        `).join('')}
+      </div>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Eyebrow Style</label>
+      <div class="option-chips" id="eyebrow-chips">
+        ${['Thin','Medium','Thick','Arched','Straight'].map((label,i) => `
+          <button class="chip-btn ${creatorState.eyebrowStyle===i+1?'selected':''}" data-eyebrow="${i+1}">${label}</button>
+        `).join('')}
+      </div>
+    </div>
+  `);
+  wireStep2();
+}
+
+function wireStep2() {
+  document.querySelector('.skin-row')?.addEventListener('click', e => {
+    const btn = e.target.closest('.skin-btn');
+    if (!btn) return;
+    creatorState.skinTone = parseInt(btn.dataset.skin);
+    document.querySelectorAll('.skin-btn').forEach(b => { b.style.borderColor = 'rgba(255,255,255,0.1)'; b.classList.remove('selected'); });
+    btn.style.borderColor = '#e8ff47';
+    btn.classList.add('selected');
+    refreshCreatorRight();
+  });
+  document.querySelector('.face-row')?.addEventListener('click', e => {
+    const btn = e.target.closest('.face-btn');
+    if (!btn) return;
+    creatorState.facePreset = parseInt(btn.dataset.face);
+    document.querySelectorAll('.face-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    refreshCreatorRight();
+  });
+  document.getElementById('hair-style-chips')?.addEventListener('click', e => {
+    const btn = e.target.closest('[data-hairstyle]');
+    if (!btn) return;
+    creatorState.hairStyle = btn.dataset.hairstyle;
+    document.querySelectorAll('#hair-style-chips .chip-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    refreshCreatorRight();
+  });
+  document.getElementById('hair-color-row')?.addEventListener('click', e => {
+    const btn = e.target.closest('.hair-col-btn');
+    if (!btn) return;
+    creatorState.hairColor = btn.dataset.haircolor;
+    document.querySelectorAll('.hair-col-btn').forEach(b => { b.style.borderColor = 'rgba(255,255,255,0.15)'; b.classList.remove('selected'); });
+    btn.style.borderColor = '#e8ff47';
+    btn.classList.add('selected');
+    refreshCreatorRight();
+  });
+  document.getElementById('eyebrow-chips')?.addEventListener('click', e => {
+    const btn = e.target.closest('[data-eyebrow]');
+    if (!btn) return;
+    creatorState.eyebrowStyle = parseInt(btn.dataset.eyebrow);
+    document.querySelectorAll('#eyebrow-chips .chip-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    refreshCreatorRight();
+  });
+  wireFooter(() => true, showCreatorStep3);
+}
+
+// ── STEP 3: PHYSICAL BUILD ────────────────────────────────────────────────────
+
+function showCreatorStep3() {
+  app.innerHTML = creatorShell(3, `
+    <div class="step-title">
+      <h2>Physical Build</h2>
+      <p class="step-sub">Your body. Your tools.</p>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Height</label>
+      <div class="slider-display-row">
+        <input type="range" class="creator-slider" id="height-slider" min="160" max="205" value="${creatorState.height}" step="1"/>
+        <input type="number" class="creator-input num-inp" id="height-num" min="160" max="205" value="${creatorState.height}"/>
+        <span class="unit-label">cm</span>
+      </div>
+      <div class="height-context" id="height-context">${getHeightContext(creatorState.height)}</div>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Weight</label>
+      <div class="slider-display-row">
+        <input type="range" class="creator-slider" id="weight-slider" min="55" max="110" value="${creatorState.weight}" step="1"/>
+        <input type="number" class="creator-input num-inp" id="weight-num" min="55" max="110" value="${creatorState.weight}"/>
+        <span class="unit-label">kg</span>
+      </div>
+    </div>
+    <div class="phys-stat-preview" id="phys-stat-preview">
+      ${renderPhysStatPreview(creatorState.height, creatorState.weight)}
+    </div>
+  `);
+  wireStep3();
+}
+
+function getHeightContext(h) {
+  if (h <= 168) return 'Low centre of gravity. Agile and quick to change direction.';
+  if (h <= 178) return 'Average height. Balanced across all attributes.';
+  if (h <= 188) return 'Above average. Starting to win aerial duels.';
+  return 'Tall. Dominant in the air. Natural aerial threat.';
+}
+
+function renderPhysStatPreview(height, weight) {
+  const mods = calcPhysicalMods(height, weight);
+  const positive = Object.entries(mods).filter(([,v]) => v > 0);
+  const negative = Object.entries(mods).filter(([,v]) => v < 0);
+  const names = { agility:'Agility', acceleration:'Acceleration', heading:'Heading',
+                  physicality:'Physicality', stamina:'Stamina', pace:'Pace', ballControl:'Ball Control' };
+  return `<div class="phys-preview-grid">
+    <div class="phys-col boost">
+      <div class="phys-col-label">▲ Boosted</div>
+      ${positive.map(([k,v]) => `<div class="phys-row"><span>${names[k]||k}</span><span class="boost-val">+${v}</span></div>`).join('')}
+      ${!positive.length ? '<div class="phys-row" style="color:rgba(255,255,255,0.2)">—</div>' : ''}
+    </div>
+    <div class="phys-col reduce">
+      <div class="phys-col-label">▼ Reduced</div>
+      ${negative.map(([k,v]) => `<div class="phys-row"><span>${names[k]||k}</span><span class="reduce-val">${v}</span></div>`).join('')}
+      ${!negative.length ? '<div class="phys-row" style="color:rgba(255,255,255,0.2)">—</div>' : ''}
+    </div>
+  </div>`;
+}
+
+function calcPhysicalMods(height, weight) {
+  const mods = {};
+  const h = height - 178;
+  if (h !== 0) {
+    mods.heading     = Math.round(h * 0.18);
+    mods.physicality = Math.round(h * 0.12);
+    mods.agility     = Math.round(h * -0.14);
+    mods.acceleration= Math.round(h * -0.10);
   }
-  // overall = avg of primary stats
-  const primary = ['pace','dribbling','finishing','passing','physicality','heading'];
-  const overall = Math.round(primary.reduce((s, k) => s + (stats[k] || 50), 0) / primary.length);
+  const w = weight - 72;
+  if (w !== 0) {
+    mods.physicality  = (mods.physicality||0)   + Math.round(w * 0.12);
+    mods.stamina      = Math.round(w * -0.08);
+    mods.agility      = (mods.agility||0)        + Math.round(w * -0.06);
+    mods.acceleration = (mods.acceleration||0)   + Math.round(w * -0.05);
+    if (w > 0) mods.heading = (mods.heading||0) + Math.round(w * 0.06);
+  }
+  Object.keys(mods).forEach(k => { if (mods[k] === 0) delete mods[k]; });
+  return mods;
+}
+
+function wireStep3() {
+  const syncH = (val) => {
+    val = Math.max(160, Math.min(205, parseInt(val) || 178));
+    creatorState.height = val;
+    document.getElementById('height-slider').value = val;
+    document.getElementById('height-num').value    = val;
+    document.getElementById('height-context').textContent = getHeightContext(val);
+    document.getElementById('phys-stat-preview').innerHTML = renderPhysStatPreview(val, creatorState.weight);
+    refreshCreatorRight();
+  };
+  const syncW = (val) => {
+    val = Math.max(55, Math.min(110, parseInt(val) || 72));
+    creatorState.weight = val;
+    document.getElementById('weight-slider').value = val;
+    document.getElementById('weight-num').value    = val;
+    document.getElementById('phys-stat-preview').innerHTML = renderPhysStatPreview(creatorState.height, val);
+    refreshCreatorRight();
+  };
+  document.getElementById('height-slider')?.addEventListener('input', e => syncH(e.target.value));
+  document.getElementById('height-num')?.addEventListener('input',   e => syncH(e.target.value));
+  document.getElementById('weight-slider')?.addEventListener('input', e => syncW(e.target.value));
+  document.getElementById('weight-num')?.addEventListener('input',   e => syncW(e.target.value));
+  wireFooter(() => true, showCreatorStep4);
+}
+
+// ── STEP 4: POSITION ──────────────────────────────────────────────────────────
+
+function showCreatorStep4() {
+  app.innerHTML = creatorShell(4, `
+    <div class="step-title">
+      <h2>Your Position</h2>
+      <p class="step-sub">Where do you play?</p>
+    </div>
+    <div class="pos-grid">
+      ${Object.entries(POSITION_DATA).map(([id,p]) => `
+        <button class="pos-card ${creatorState.position===id?'selected':''}" data-pos="${id}">
+          <div class="pos-icon">${p.icon}</div>
+          <div class="pos-label">${id} — ${p.label}</div>
+          <div class="pos-desc">${p.desc}</div>
+        </button>
+      `).join('')}
+    </div>
+  `);
+  document.querySelector('.pos-grid')?.addEventListener('click', e => {
+    const btn = e.target.closest('.pos-card');
+    if (!btn) return;
+    creatorState.position  = btn.dataset.pos;
+    creatorState.archetype = '';
+    document.querySelectorAll('.pos-card').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    refreshCreatorRight();
+  });
+  wireFooter(() => {
+    if (!creatorState.position) { showToast('Select your position', '⚠️'); return false; }
+    return true;
+  }, showCreatorStep5);
+}
+
+// ── STEP 5: ARCHETYPE ─────────────────────────────────────────────────────────
+
+function showCreatorStep5() {
+  const archs = ARCHETYPES[creatorState.position] || [];
+  app.innerHTML = creatorShell(5, `
+    <div class="step-title">
+      <h2>Your Archetype</h2>
+      <p class="step-sub">What kind of player are you?</p>
+    </div>
+    <div class="arch-list">
+      ${archs.map(a => `
+        <button class="arch-card ${creatorState.archetype===a.id?'selected':''}" data-arch="${a.id}">
+          <div class="arch-header">
+            <span class="arch-icon">${a.icon}</span>
+            <div>
+              <div class="arch-name">${a.name}</div>
+              <div class="arch-pos">${creatorState.position}</div>
+            </div>
+          </div>
+          <div class="arch-desc">${a.desc}</div>
+          <div class="arch-tags">
+            ${a.strengths.map(s => `<span class="arch-tag boost">▲ ${s}</span>`).join('')}
+            ${a.weaknesses.map(s => `<span class="arch-tag reduce">▼ ${s}</span>`).join('')}
+          </div>
+        </button>
+      `).join('')}
+    </div>
+  `);
+  document.querySelector('.arch-list')?.addEventListener('click', e => {
+    const btn = e.target.closest('.arch-card');
+    if (!btn) return;
+    creatorState.archetype = btn.dataset.arch;
+    document.querySelectorAll('.arch-card').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    refreshCreatorRight();
+  });
+  wireFooter(() => {
+    if (!creatorState.archetype) { showToast('Choose your archetype', '⚠️'); return false; }
+    return true;
+  }, showCreatorStep6);
+}
+
+// ── STEP 6: SUMMARY + WEAPON ──────────────────────────────────────────────────
+
+function showCreatorStep6() {
+  const nation = NATIONS.find(n => n.id === creatorState.nationality);
+  const arch   = ARCHETYPES[creatorState.position]?.find(a => a.id === creatorState.archetype);
+  const stats  = buildStatsFromCreator(creatorState);
+  const ovr    = calcOverallFromStats(stats, creatorState.position);
+
+  const displayStats = [
+    ['Pace',        stats.pace],
+    ['Dribbling',   stats.dribbling],
+    ['Finishing',   stats.finishing],
+    ['Passing',     stats.shortPassing],
+    ['Vision',      stats.vision],
+    ['Physicality', stats.physicality],
+    ['Composure',   stats.composure],
+    ['Stamina',     stats.stamina],
+  ];
+
+  app.innerHTML = creatorShell(6, `
+    <div class="step-title">
+      <h2>Your Player</h2>
+      <p class="step-sub">Review your build. Choose your weapon.</p>
+    </div>
+    <div class="summary-identity">
+      <div class="si-name">${creatorState.firstName} ${creatorState.lastName}</div>
+      <div class="si-meta">
+        ${nation ? `<img src="https://flagcdn.com/w40/${nation.code}.png" style="height:14px;vertical-align:middle;margin-right:4px;" alt=""/>` : ''}
+        ${nation?.name || ''} · ${creatorState.position} · ${arch?.name || ''}
+      </div>
+      <div class="si-physical">${creatorState.height}cm · ${creatorState.weight}kg · Age 16</div>
+    </div>
+    <div class="summary-stats">
+      ${displayStats.map(([label, val]) => `
+        <div class="sum-stat-row">
+          <span class="sum-stat-name">${label}</span>
+          <div class="sum-stat-track"><div class="sum-stat-fill" style="width:${val}%;background:${getStatColor(val)}"></div></div>
+          <span class="sum-stat-val">${val}</span>
+        </div>
+      `).join('')}
+    </div>
+    <div class="field-group" style="margin-top:16px">
+      <label class="field-label">Starting Weapon</label>
+      <div class="weapon-list" id="weapon-list-v2">
+        ${WEAPONS.map(w => `
+          <button class="weapon-card-btn ${creatorState.weapon===w.id?'selected':''}" data-weapon="${w.id}">
+            <span class="wcb-icon">${w.icon}</span>
+            <div><div class="wcb-name">${w.name}</div><div class="wcb-desc">${w.desc}</div></div>
+          </button>
+        `).join('')}
+        <button class="weapon-card-btn ${creatorState.weapon==='discover'?'selected':''}" data-weapon="discover">
+          <span class="wcb-icon">🔮</span>
+          <div><div class="wcb-name">Discover In Play</div><div class="wcb-desc">Your weapon reveals itself in the right moment.</div></div>
+        </button>
+      </div>
+    </div>
+  `);
+
+  document.getElementById('weapon-list-v2')?.addEventListener('click', e => {
+    const btn = e.target.closest('.weapon-card-btn');
+    if (!btn) return;
+    creatorState.weapon = btn.dataset.weapon;
+    document.querySelectorAll('.weapon-card-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+  });
+
+  wireFooter(() => true, () => finalisePlayer());
+}
+
+function getStatColor(val) {
+  if (val >= 75) return '#e8ff47';
+  if (val >= 65) return '#4ade80';
+  if (val >= 55) return '#60a5fa';
+  return '#f87171';
+}
+
+// ── FINALISE PLAYER ───────────────────────────────────────────────────────────
+
+function finalisePlayer() {
+  const stats   = buildStatsFromCreator(creatorState);
+  const overall = calcOverallFromStats(stats, creatorState.position);
+  const fullName = [creatorState.firstName, creatorState.lastName].filter(Boolean).join(' ');
 
   GameState.player = {
-    name: sel.name,
-    nationality: sel.nation,
-    position: sel.position,
-    profile: sel.profile,
-    weapon: sel.weapon,
+    name:        fullName,
+    firstName:   creatorState.firstName,
+    lastName:    creatorState.lastName,
+    nationality: creatorState.nationality,
+    birthDay:    creatorState.birthDay,
+    birthMonth:  creatorState.birthMonth,
+    position:    creatorState.position,
+    archetype:   creatorState.archetype,
+    profile:     mapArchetypeToProfile(creatorState.archetype, creatorState.position),
+    weapon:      creatorState.weapon,
+    height:      creatorState.height,
+    weight:      creatorState.weight,
+    appearance: {
+      facePreset:   creatorState.facePreset,
+      skinTone:     creatorState.skinTone,
+      hairStyle:    creatorState.hairStyle,
+      hairColor:    creatorState.hairColor,
+      eyebrowStyle: creatorState.eyebrowStyle,
+    },
     stats,
     overall,
+    backgroundMods: {},
   };
 
-  // Seed match confidence from player stats
   GameState.match.confidence = stats.confidence || 50;
+  showBackgroundStep1();
 }
 
-// ── STAT CARD ─────────────────────────────────────────────────────────────────
+function buildStatsFromCreator(state) {
+  const profile = PROFILES.find(p => p.id === mapArchetypeToProfile(state.archetype, state.position));
+  const stats = {};
+  if (profile) {
+    for (const [stat, [min, max]] of Object.entries(profile.stats)) {
+      stats[stat] = Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+  } else {
+    Object.assign(stats, { pace:54, acceleration:53, finishing:52, dribbling:52, agility:51,
+      shortPassing:51, longPassing:48, vision:50, physicality:51, stamina:52,
+      heading:48, ballControl:51, composure:50, positioning:50, balance:50,
+      confidence:50, intelligence:48, ego:45, resilience:50 });
+  }
+  const arch = ARCHETYPES[state.position]?.find(a => a.id === state.archetype);
+  if (arch?.statMods) {
+    for (const [k, v] of Object.entries(arch.statMods)) {
+      stats[k] = Math.max(42, Math.min(72, (stats[k] || 50) + v));
+    }
+  }
+  const physMods = calcPhysicalMods(state.height, state.weight);
+  for (const [k, v] of Object.entries(physMods)) {
+    stats[k] = Math.max(40, Math.min(72, (stats[k] || 50) + v));
+  }
+  return stats;
+}
 
-function showStatCard() {
-  app.innerHTML = statCardScreen();
-  document.getElementById('start-match-btn').addEventListener('click', () => {
-    showAcademyXI();
-  });
+function mapArchetypeToProfile(archetype, position) {
+  const physical  = ['enforcer', 'runner'];
+  const technical = ['dribbler', 'maestro', 'playmaker', 'inside_forward', 'false_nine'];
+  if (physical.includes(archetype))  return 'powerhouse';
+  if (technical.includes(archetype)) return 'technician';
+  return 'pace_power';
 }
 
 // ── BACKGROUND SYSTEM ─────────────────────────────────────────────────────────
@@ -190,7 +694,7 @@ function showBackgroundStep2() {
 
 function showYouthEvent(idx) {
   const eventDef = GameState.youthEventQueue[idx];
-  if (!eventDef) { showStatCard(); return; }
+  if (!eventDef) { showAcademyXI(); return; }
   app.innerHTML = youthEventScreen(eventDef);
   document.getElementById('ye-choices').addEventListener('click', e => {
     const btn = e.target.closest('[data-choice]');
@@ -208,7 +712,7 @@ function showYouthEventResult(eventDef, choiceId, idx) {
     if (idx < 1) {
       showYouthEvent(1);
     } else {
-      showStatCard();
+      showAcademyXI();
     }
   });
 }
