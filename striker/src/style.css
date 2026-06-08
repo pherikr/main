@@ -37,12 +37,13 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 input[type="text"] { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-family: 'Barlow', sans-serif; font-size: 1rem; padding: 0.75rem 1rem; outline: none; transition: border-color 0.2s; }
 input[type="text"]:focus { border-color: var(--accent); }
 input[type="text"]::placeholder { color: var(--muted); }
-.flag-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.5rem; }
-.flag-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.5rem 0.25rem; cursor: pointer; color: var(--text); font-size: 0.7rem; text-align: center; transition: border-color 0.2s, background 0.2s; display: flex; flex-direction: column; align-items: center; gap: 0.2rem; }
-.flag-btn .flag { font-size: 1.5rem; }
-.flag-btn .nation-name { font-size: 0.6rem; color: var(--muted); }
-.flag-btn:hover { border-color: var(--accent); }
-.flag-btn.selected { border-color: var(--accent); background: rgba(99,102,241,0.15); }
+.flag-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.4rem; }
+.flag-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.6rem 0.2rem; cursor: pointer; color: var(--text); font-size: 0.7rem; text-align: center; transition: border-color 0.2s, background 0.2s; display: flex; flex-direction: column; align-items: center; gap: 0.25rem; }
+.flag-btn .flag { font-size: 2rem; line-height: 1; }
+.flag-btn .nation-name { font-size: 0.58rem; color: var(--muted); line-height: 1.2; }
+.flag-btn:hover { border-color: var(--accent); background: rgba(99,102,241,0.08); }
+.flag-btn.selected { border-color: var(--accent); background: rgba(99,102,241,0.18); }
+.flag-btn.selected .flag { filter: drop-shadow(0 0 6px rgba(99,102,241,0.7)); }
 .button-row { display: flex; gap: 0.5rem; }
 .choice-btn { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.75rem; color: var(--text); font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; letter-spacing: 0.05em; cursor: pointer; transition: border-color 0.2s, background 0.2s; }
 .choice-btn:hover { border-color: var(--accent); }
