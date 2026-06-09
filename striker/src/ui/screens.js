@@ -68,7 +68,7 @@ export const ARCHETYPES = {
   ],
 };
 
-// ── PORTRAIT — DiceBear avataaars (local, no network) ────────────────────────
+// ── PORTRAIT — DiceBear avataaars v8 (local, no network) ─────────────────────
 
 const PORTRAIT_SKIN = {
   1: ['pale'],
@@ -80,14 +80,14 @@ const PORTRAIT_SKIN = {
 };
 
 const PORTRAIT_HAIR_TOP = {
-  buzz:     ['TheCaesar'],
-  fade:     ['Sides'],
-  short:    ['ShortFlat'],
-  messy:    ['ShortWaved'],
-  curly:    ['Curly'],
-  long:     ['LongButNotTooLong'],
-  afro:     ['Fro'],
-  undercut: ['TheCaesarAndSidePart'],
+  buzz:     ['ShortHairTheCaesar'],
+  fade:     ['ShortHairSides'],
+  short:    ['ShortHairShortFlat'],
+  messy:    ['ShortHairShortWaved'],
+  curly:    ['LongHairCurly'],
+  long:     ['LongHairNotTooLong'],
+  afro:     ['LongHairFro'],
+  undercut: ['ShortHairTheCaesarSidePart'],
 };
 
 const PORTRAIT_HAIR_COLOR = {
@@ -100,19 +100,19 @@ const PORTRAIT_HAIR_COLOR = {
 };
 
 const PORTRAIT_EYEBROW = {
-  1: ['defaultNatural'],
-  2: ['default'],
-  3: ['raisedExcitedNatural'],
-  4: ['upDown'],
-  5: ['flatNatural'],
+  1: ['DefaultNatural'],
+  2: ['Default'],
+  3: ['RaisedExcitedNatural'],
+  4: ['UpDown'],
+  5: ['FlatNatural'],
 };
 
 const PORTRAIT_EYES = {
-  1: ['default'],
-  2: ['squint'],
-  3: ['default'],
-  4: ['side'],
-  5: ['happy'],
+  1: ['Default'],
+  2: ['Squint'],
+  3: ['Default'],
+  4: ['Side'],
+  5: ['Happy'],
 };
 
 const PORTRAIT_JERSEY = {
@@ -128,50 +128,47 @@ const PORTRAIT_JERSEY = {
 };
 
 export function renderPortrait(state) {
-  const seed = ((state.firstName || '') + (state.lastName || '')).trim() || 'player';
+  const namePart = ((state.firstName || '') + (state.lastName || '')).trim();
+  const seed = namePart || 'player';
 
-  const avatar = createAvatar(avataaars, {
+  const svg = createAvatar(avataaars, {
     seed,
-    size:            200,
-    backgroundColor: ['1a1f2e'],
-    radius:          12,
-    skinColor:       PORTRAIT_SKIN[state.skinTone]         || ['tanned'],
-    top:             PORTRAIT_HAIR_TOP[state.hairStyle]    || ['ShortFlat'],
-    hairColor:       PORTRAIT_HAIR_COLOR[state.hairColor]  || ['black'],
-    eyebrow:         PORTRAIT_EYEBROW[state.eyebrowStyle]  || ['default'],
-    eyes:            PORTRAIT_EYES[state.facePreset]       || ['default'],
-    mouth:           ['default'],
-    accessories:     ['blank'],
-    facialHair:      ['blank'],
-    clotheType:      ['ShirtCrewNeck'],
-    clotheColor:     PORTRAIT_JERSEY[state.nationality]    || ['Blue02'],
-  });
+    dataUri:     false,
+    skinColor:   PORTRAIT_SKIN[state.skinTone]        || ['tanned'],
+    top:         PORTRAIT_HAIR_TOP[state.hairStyle]   || ['ShortHairShortFlat'],
+    hairColor:   PORTRAIT_HAIR_COLOR[state.hairColor] || ['black'],
+    eyebrow:     PORTRAIT_EYEBROW[state.eyebrowStyle] || ['Default'],
+    eyes:        PORTRAIT_EYES[state.facePreset]      || ['Default'],
+    mouth:       ['Default'],
+    accessories: ['Blank'],
+    facialHair:  ['Blank'],
+    clotheType:  ['ShirtCrewNeck'],
+    clotheColor: PORTRAIT_JERSEY[state.nationality]   || ['Blue02'],
+    style:       ['Circle'],
+  }).toString();
 
-  return `<div class="portrait-frame">${avatar.toString()}</div>`;
+  return `<div class="portrait-frame">${svg}</div>`;
 }
 
 export function getPlayerPortraitSVG(small = false) {
   const p   = GameState.player;
   const app = p.appearance || {};
 
-  const avatar = createAvatar(avataaars, {
-    seed:            (p.name || 'player').replace(/\s+/g, ''),
-    size:            small ? 48 : 120,
-    backgroundColor: ['1a1f2e'],
-    radius:          small ? 50 : 10,
-    skinColor:       PORTRAIT_SKIN[app.skinTone]        || ['tanned'],
-    top:             PORTRAIT_HAIR_TOP[app.hairStyle]   || ['ShortFlat'],
-    hairColor:       PORTRAIT_HAIR_COLOR[app.hairColor] || ['black'],
-    eyebrow:         PORTRAIT_EYEBROW[app.eyebrowStyle] || ['default'],
-    eyes:            PORTRAIT_EYES[app.facePreset]      || ['default'],
-    mouth:           ['default'],
-    accessories:     ['blank'],
-    facialHair:      ['blank'],
-    clotheType:      ['ShirtCrewNeck'],
-    clotheColor:     PORTRAIT_JERSEY[p.nationality]     || ['Blue02'],
-  });
-
-  return avatar.toString();
+  return createAvatar(avataaars, {
+    seed:        (p.name || 'player').replace(/\s+/g, ''),
+    dataUri:     false,
+    skinColor:   PORTRAIT_SKIN[app.skinTone]        || ['tanned'],
+    top:         PORTRAIT_HAIR_TOP[app.hairStyle]   || ['ShortHairShortFlat'],
+    hairColor:   PORTRAIT_HAIR_COLOR[app.hairColor] || ['black'],
+    eyebrow:     PORTRAIT_EYEBROW[app.eyebrowStyle] || ['Default'],
+    eyes:        PORTRAIT_EYES[app.facePreset]      || ['Default'],
+    mouth:       ['Default'],
+    accessories: ['Blank'],
+    facialHair:  ['Blank'],
+    clotheType:  ['ShirtCrewNeck'],
+    clotheColor: PORTRAIT_JERSEY[p.nationality]     || ['Blue02'],
+    style:       ['Circle'],
+  }).toString();
 }
 
 export function renderCreatorCard(state) {
