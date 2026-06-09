@@ -853,3 +853,14 @@ input[type="text"]::placeholder { color: var(--muted); }
   white-space: nowrap;
 }
 .creator-toast.toast-show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── DICEBEAR PORTRAIT FRAME ─────────────────────────────────────────────── */
+.portrait-frame {
+  width: 100%;
+  max-width: 156px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(255,255,255,0.04);
+  border: 0.5px solid rgba(255,255,255,0.1);
+}
+.portrait-frame svg { width: 100%; height: auto; display: block; }

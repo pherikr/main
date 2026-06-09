@@ -7,17 +7,19 @@ import { WEAPONS, DISCOVER_OPTION } from '../data/weapons.js';
 import { GameState } from '../engine/GameState.js';
 import { RatingEngine } from '../engine/RatingEngine.js';
 import { renderPitchMap } from './pitchMap.js';
+import { createAvatar } from '@dicebear/core';
+import { avataaars } from '@dicebear/collection';
 import { renderStatsBlock } from '../data/events_flavor.js';
 
 // ── CREATOR DATA CONSTANTS ────────────────────────────────────────────────────
 
 export const SKIN_TONES = {
-  1: { base: '#FDDBB4', shadow: '#E8B98A', name: 'Very Light' },
-  2: { base: '#EDB98A', shadow: '#C9956A', name: 'Light'      },
-  3: { base: '#C68642', shadow: '#A06A2A', name: 'Medium'     },
-  4: { base: '#8D5524', shadow: '#6B3A1A', name: 'Tan'        },
-  5: { base: '#5C3317', shadow: '#3D200E', name: 'Dark'       },
-  6: { base: '#3B1E08', shadow: '#261205', name: 'Very Dark'  },
+  1: { name: 'Very Light' },
+  2: { name: 'Light'      },
+  3: { name: 'Medium'     },
+  4: { name: 'Tan'        },
+  5: { name: 'Dark'       },
+  6: { name: 'Very Dark'  },
 };
 
 export const HAIR_COLORS = {
@@ -66,112 +68,110 @@ export const ARCHETYPES = {
   ],
 };
 
-// ── PORTRAIT RENDER HELPERS ───────────────────────────────────────────────────
+// ── PORTRAIT — DiceBear avataaars (local, no network) ────────────────────────
 
-function getJerseyColor(nationality) {
-  const m = { egypt:'#CC0000', brazil:'#F7D11E', england:'#CCCCCC', france:'#003189',
-              spain:'#CC0000', argentina:'#74ACDF', portugal:'#006600', germany:'#CCCCCC',
-              netherlands:'#FF6600', italy:'#003189', nigeria:'#008000', senegal:'#00853F',
-              ghana:'#006B3F', morocco:'#C1272D', default:'#1a3a6e' };
-  return m[nationality] || m.default;
-}
+const PORTRAIT_SKIN = {
+  1: ['pale'],
+  2: ['light'],
+  3: ['tanned'],
+  4: ['brown'],
+  5: ['darkBrown'],
+  6: ['black'],
+};
 
-function renderEyesHelper(preset, skinTone, faceW, tall) {
-  const eyeY = 126 + tall * 2;
-  const spread = faceW * 0.42;
-  const lx = 100 - spread, rx = 100 + spread;
-  const eyeW = [8,9,8,7,7][(preset||1)-1] || 8;
-  const eyeH = [6,7,5,6,7][(preset||1)-1] || 6;
-  const irisCol = skinTone <= 2 ? '#4A7FA5' : skinTone <= 4 ? '#5C3A1A' : '#1A1A1A';
-  return `
-    <ellipse cx="${lx}" cy="${eyeY}" rx="${eyeW}" ry="${eyeH}" fill="white"/>
-    <ellipse cx="${lx}" cy="${eyeY}" rx="${eyeW-3}" ry="${eyeH-1}" fill="${irisCol}"/>
-    <ellipse cx="${lx+1}" cy="${eyeY-1}" rx="2" ry="2" fill="white" opacity="0.6"/>
-    <ellipse cx="${rx}" cy="${eyeY}" rx="${eyeW}" ry="${eyeH}" fill="white"/>
-    <ellipse cx="${rx}" cy="${eyeY}" rx="${eyeW-3}" ry="${eyeH-1}" fill="${irisCol}"/>
-    <ellipse cx="${rx+1}" cy="${eyeY-1}" rx="2" ry="2" fill="white" opacity="0.6"/>`;
-}
+const PORTRAIT_HAIR_TOP = {
+  buzz:     ['TheCaesar'],
+  fade:     ['Sides'],
+  short:    ['ShortFlat'],
+  messy:    ['ShortWaved'],
+  curly:    ['Curly'],
+  long:     ['LongButNotTooLong'],
+  afro:     ['Fro'],
+  undercut: ['TheCaesarAndSidePart'],
+};
 
-function renderEyebrowsHelper(style, color, faceW) {
-  const y = 116, s = faceW * 0.42;
-  const defs = [
-    `<path d="M ${100-s-8} ${y} Q ${100-s+2} ${y-3} ${100-s+10} ${y}" stroke="${color}" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-     <path d="M ${100+s-10} ${y} Q ${100+s-2} ${y-3} ${100+s+8} ${y}" stroke="${color}" stroke-width="1.5" fill="none" stroke-linecap="round"/>`,
-    `<path d="M ${100-s-8} ${y} Q ${100-s+2} ${y-4} ${100-s+10} ${y+1}" stroke="${color}" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-     <path d="M ${100+s-10} ${y+1} Q ${100+s-2} ${y-4} ${100+s+8} ${y}" stroke="${color}" stroke-width="2.5" fill="none" stroke-linecap="round"/>`,
-    `<path d="M ${100-s-8} ${y+1} Q ${100-s+2} ${y-5} ${100-s+10} ${y+2}" stroke="${color}" stroke-width="4" fill="none" stroke-linecap="round"/>
-     <path d="M ${100+s-10} ${y+2} Q ${100+s-2} ${y-5} ${100+s+8} ${y+1}" stroke="${color}" stroke-width="4" fill="none" stroke-linecap="round"/>`,
-    `<path d="M ${100-s-6} ${y+2} Q ${100-s+4} ${y-7} ${100-s+11} ${y}" stroke="${color}" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-     <path d="M ${100+s-11} ${y} Q ${100+s-4} ${y-7} ${100+s+6} ${y+2}" stroke="${color}" stroke-width="2.5" fill="none" stroke-linecap="round"/>`,
-    `<path d="M ${100-s-7} ${y} L ${100-s+10} ${y}" stroke="${color}" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-     <path d="M ${100+s-10} ${y} L ${100+s+7} ${y}" stroke="${color}" stroke-width="2.5" fill="none" stroke-linecap="round"/>`,
-  ];
-  return defs[((style||2) - 1) % defs.length] || defs[1];
-}
+const PORTRAIT_HAIR_COLOR = {
+  black:      ['black'],
+  dark_brown: ['brownDark'],
+  brown:      ['brown'],
+  blonde:     ['blondeGolden'],
+  red:        ['auburn'],
+  white:      ['platinum'],
+};
 
-function renderHairHelper(style, color, faceW) {
-  const styles = {
-    buzz:     `<ellipse cx="100" cy="98" rx="${faceW+2}" ry="28" fill="${color}"/>`,
-    fade:     `<path d="M ${100-faceW-2} 128 Q ${100-faceW-2} 80 ${100-faceW+5} 76 Q 100 68 ${100+faceW-5} 76 Q ${100+faceW+2} 80 ${100+faceW+2} 128" fill="${color}"/>
-               <ellipse cx="100" cy="83" rx="${faceW-4}" ry="22" fill="${color}"/>`,
-    short:    `<path d="M ${100-faceW-2} 125 Q ${100-faceW-4} 85 ${100-faceW+8} 72 Q 100 62 ${100+faceW-8} 72 Q ${100+faceW+4} 85 ${100+faceW+2} 125" fill="${color}"/>`,
-    messy:    `<path d="M ${100-faceW-2} 124 Q ${100-faceW-6} 82 ${100-faceW+6} 68 Q 100 58 ${100+faceW-6} 68 Q ${100+faceW+6} 82 ${100+faceW+2} 124" fill="${color}"/>
-               <path d="M ${100-faceW+4} 68 Q ${100-10} 52 ${100+4} 58" stroke="${color}" stroke-width="8" fill="none" stroke-linecap="round"/>
-               <path d="M 100 60 Q ${100+14} 48 ${100+faceW-6} 64" stroke="${color}" stroke-width="7" fill="none" stroke-linecap="round"/>
-               <path d="M ${100-faceW+10} 72 Q ${100-18} 54 ${100-4} 60" stroke="${color}" stroke-width="6" fill="none" stroke-linecap="round"/>`,
-    curly:    `<ellipse cx="100" cy="90" rx="${faceW+8}" ry="38" fill="${color}"/>
-               <circle cx="${100-faceW-2}" cy="108" r="10" fill="${color}"/>
-               <circle cx="${100+faceW+2}" cy="108" r="10" fill="${color}"/>
-               <circle cx="${100-faceW+6}" cy="70" r="12" fill="${color}"/>
-               <circle cx="${100+faceW-6}" cy="70" r="12" fill="${color}"/>
-               <circle cx="100" cy="65" r="14" fill="${color}"/>`,
-    long:     `<path d="M ${100-faceW-2} 125 Q ${100-faceW-8} 160 ${100-faceW-4} 200 Q ${100-20} 218 100 220 Q ${100+20} 218 ${100+faceW+4} 200 Q ${100+faceW+8} 160 ${100+faceW+2} 125 Q ${100+faceW+4} 82 ${100+faceW-8} 70 Q 100 58 ${100-faceW+8} 70 Q ${100-faceW-4} 82 ${100-faceW-2} 125" fill="${color}"/>`,
-    afro:     `<ellipse cx="100" cy="92" rx="${faceW+22}" ry="52" fill="${color}"/>
-               <ellipse cx="100" cy="116" rx="${faceW+8}" ry="20" fill="${color}"/>`,
-    undercut: `<path d="M ${100-faceW-2} 128 Q ${100-faceW-2} 92 ${100-faceW+8} 76 Q 100 66 ${100+faceW-8} 76 Q ${100+faceW+2} 92 ${100+faceW+2} 128" fill="${color}" opacity="0.5"/>
-               <ellipse cx="100" cy="78" rx="${faceW-6}" ry="18" fill="${color}"/>
-               <path d="M ${100-faceW+8} 76 Q 100 70 ${100+faceW-8} 76 Q 100 95 ${100-faceW+8} 76" fill="${color}"/>`,
-  };
-  return styles[style] || styles.short;
-}
+const PORTRAIT_EYEBROW = {
+  1: ['defaultNatural'],
+  2: ['default'],
+  3: ['raisedExcitedNatural'],
+  4: ['upDown'],
+  5: ['flatNatural'],
+};
+
+const PORTRAIT_EYES = {
+  1: ['default'],
+  2: ['squint'],
+  3: ['default'],
+  4: ['side'],
+  5: ['happy'],
+};
+
+const PORTRAIT_JERSEY = {
+  egypt: ['Red'], brazil: ['PastelYellow'], england: ['White'], france: ['Blue01'],
+  spain: ['Red'], argentina: ['Blue02'], portugal: ['Red'], germany: ['White'],
+  netherlands: ['PastelOrange'], italy: ['Blue01'], nigeria: ['PastelGreen'],
+  senegal: ['White'], ghana: ['Gray01'], morocco: ['Red'], ivory_coast: ['PastelOrange'],
+  cameroon: ['PastelGreen'], algeria: ['White'], japan: ['Blue03'],
+  south_korea: ['Red'], usa: ['Blue02'], mexico: ['PastelGreen'],
+  colombia: ['PastelYellow'], uruguay: ['Blue01'], croatia: ['Red'],
+  sweden: ['PastelYellow'], turkey: ['Red'], poland: ['White'],
+  serbia: ['Red'], denmark: ['Red'], saudi: ['PastelGreen'],
+};
 
 export function renderPortrait(state) {
-  const skin    = SKIN_TONES[state.skinTone || 2];
-  const hairCol = HAIR_COLORS[state.hairColor || 'black'];
-  const tall    = Math.max(0, ((state.height || 178) - 178) / 27);
-  const heavy   = Math.max(0, ((state.weight || 72) - 72) / 38);
-  const slim    = Math.max(0, (72 - (state.weight || 72)) / 17);
-  const faceW   = ([54,50,58,52,46][(state.facePreset||1)-1] || 54) + heavy * 6 - slim * 4;
-  const faceH   = ([68,72,60,66,76][(state.facePreset||1)-1] || 68) + tall * 4;
-  const jerseyColor = getJerseyColor(state.nationality);
+  const seed = ((state.firstName || '') + (state.lastName || '')).trim() || 'player';
 
-  return `<svg viewBox="0 0 200 260" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:156px">
-  <defs>
-    <radialGradient id="bgGrad" cx="50%" cy="40%" r="60%">
-      <stop offset="0%" stop-color="rgba(40,40,50,1)"/>
-      <stop offset="100%" stop-color="rgba(11,12,15,1)"/>
-    </radialGradient>
-    <filter id="softShadow"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.4"/></filter>
-  </defs>
-  <rect width="200" height="260" fill="url(#bgGrad)" rx="10"/>
-  <path d="M 45 260 L 45 210 Q 45 195 60 188 L 78 182 L 100 188 L 122 182 L 140 188 Q 155 195 155 210 L 155 260 Z" fill="${jerseyColor}" filter="url(#softShadow)"/>
-  <path d="M 85 182 Q 100 195 115 182" stroke="rgba(255,255,255,0.3)" fill="none" stroke-width="2"/>
-  <text x="100" y="235" text-anchor="middle" fill="rgba(255,255,255,0.25)" font-family="Bebas Neue, sans-serif" font-size="28">16</text>
-  <rect x="84" y="${168 - tall * 4}" width="32" height="${28 + tall * 4}" rx="8" fill="${skin.base}"/>
-  <ellipse cx="${100 - faceW - 2}" cy="${130 + tall * 2}" rx="9" ry="13" fill="${skin.base}"/>
-  <ellipse cx="${100 - faceW + 1}" cy="${130 + tall * 2}" rx="5" ry="9" fill="${skin.shadow}"/>
-  <ellipse cx="${100 + faceW + 2}" cy="${130 + tall * 2}" rx="9" ry="13" fill="${skin.base}"/>
-  <ellipse cx="${100 + faceW - 1}" cy="${130 + tall * 2}" rx="5" ry="9" fill="${skin.shadow}"/>
-  <ellipse cx="100" cy="${132 + tall * 2}" rx="${faceW}" ry="${faceH / 2}" fill="${skin.base}" filter="url(#softShadow)"/>
-  <ellipse cx="${100 - faceW * 0.55}" cy="${140 + tall * 2}" rx="12" ry="8" fill="${skin.shadow}" opacity="0.3"/>
-  <ellipse cx="${100 + faceW * 0.55}" cy="${140 + tall * 2}" rx="12" ry="8" fill="${skin.shadow}" opacity="0.3"/>
-  ${renderEyesHelper(state.facePreset, state.skinTone, faceW, tall)}
-  <ellipse cx="100" cy="${146 + tall * 2}" rx="4" ry="${5 + heavy}" fill="${skin.shadow}" opacity="0.4"/>
-  <path d="M ${96 - heavy} ${152 + tall * 2} Q 100 ${156 + tall * 2} ${104 + heavy} ${152 + tall * 2}" stroke="${skin.shadow}" fill="none" stroke-width="1.2" opacity="0.5"/>
-  <path d="M ${88 - heavy} ${162 + tall * 2} Q 100 ${168 + tall * 2} ${112 + heavy} ${162 + tall * 2}" stroke="${skin.shadow}" fill="none" stroke-width="2" stroke-linecap="round"/>
-  ${renderEyebrowsHelper(state.eyebrowStyle, skin.shadow, faceW)}
-  ${renderHairHelper(state.hairStyle, hairCol, faceW)}
-</svg>`;
+  const avatar = createAvatar(avataaars, {
+    seed,
+    size:            200,
+    backgroundColor: ['1a1f2e'],
+    radius:          12,
+    skinColor:       PORTRAIT_SKIN[state.skinTone]         || ['tanned'],
+    top:             PORTRAIT_HAIR_TOP[state.hairStyle]    || ['ShortFlat'],
+    hairColor:       PORTRAIT_HAIR_COLOR[state.hairColor]  || ['black'],
+    eyebrow:         PORTRAIT_EYEBROW[state.eyebrowStyle]  || ['default'],
+    eyes:            PORTRAIT_EYES[state.facePreset]       || ['default'],
+    mouth:           ['default'],
+    accessories:     ['blank'],
+    facialHair:      ['blank'],
+    clotheType:      ['ShirtCrewNeck'],
+    clotheColor:     PORTRAIT_JERSEY[state.nationality]    || ['Blue02'],
+  });
+
+  return `<div class="portrait-frame">${avatar.toString()}</div>`;
+}
+
+export function getPlayerPortraitSVG(small = false) {
+  const p   = GameState.player;
+  const app = p.appearance || {};
+
+  const avatar = createAvatar(avataaars, {
+    seed:            (p.name || 'player').replace(/\s+/g, ''),
+    size:            small ? 48 : 120,
+    backgroundColor: ['1a1f2e'],
+    radius:          small ? 50 : 10,
+    skinColor:       PORTRAIT_SKIN[app.skinTone]        || ['tanned'],
+    top:             PORTRAIT_HAIR_TOP[app.hairStyle]   || ['ShortFlat'],
+    hairColor:       PORTRAIT_HAIR_COLOR[app.hairColor] || ['black'],
+    eyebrow:         PORTRAIT_EYEBROW[app.eyebrowStyle] || ['default'],
+    eyes:            PORTRAIT_EYES[app.facePreset]      || ['default'],
+    mouth:           ['default'],
+    accessories:     ['blank'],
+    facialHair:      ['blank'],
+    clotheType:      ['ShirtCrewNeck'],
+    clotheColor:     PORTRAIT_JERSEY[p.nationality]     || ['Blue02'],
+  });
+
+  return avatar.toString();
 }
 
 export function renderCreatorCard(state) {
