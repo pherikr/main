@@ -14,12 +14,12 @@ import { renderStatsBlock } from '../data/events_flavor.js';
 // ── CREATOR DATA CONSTANTS ────────────────────────────────────────────────────
 
 export const SKIN_TONES = {
-  1: { name: 'Very Light' },
-  2: { name: 'Light'      },
-  3: { name: 'Medium'     },
-  4: { name: 'Tan'        },
-  5: { name: 'Dark'       },
-  6: { name: 'Very Dark'  },
+  1: { name: 'Very Light', base: '#ffdbb4' },
+  2: { name: 'Light',      base: '#edb98a' },
+  3: { name: 'Medium',     base: '#d08b5b' },
+  4: { name: 'Tan',        base: '#ae5d29' },
+  5: { name: 'Dark',       base: '#614335' },
+  6: { name: 'Very Dark',  base: '#3a2620' },
 };
 
 export const HAIR_COLORS = {
@@ -70,61 +70,62 @@ export const ARCHETYPES = {
 
 // ── PORTRAIT — DiceBear avataaars v8 (local, no network) ─────────────────────
 
+// DiceBear v8 avataaars uses HEX color strings (no '#') and camelCase enum values.
 const PORTRAIT_SKIN = {
-  1: ['pale'],
-  2: ['light'],
-  3: ['tanned'],
-  4: ['brown'],
-  5: ['darkBrown'],
-  6: ['black'],
+  1: ['ffdbb4'],
+  2: ['edb98a'],
+  3: ['d08b5b'],
+  4: ['ae5d29'],
+  5: ['614335'],
+  6: ['3a2620'],
 };
 
 const PORTRAIT_HAIR_TOP = {
-  buzz:     ['ShortHairTheCaesar'],
-  fade:     ['ShortHairSides'],
-  short:    ['ShortHairShortFlat'],
-  messy:    ['ShortHairShortWaved'],
-  curly:    ['LongHairCurly'],
-  long:     ['LongHairNotTooLong'],
-  afro:     ['LongHairFro'],
-  undercut: ['ShortHairTheCaesarSidePart'],
+  buzz:     ['theCaesar'],
+  fade:     ['shavedSides'],
+  short:    ['shortFlat'],
+  messy:    ['shortWaved'],
+  curly:    ['curly'],
+  long:     ['longButNotTooLong'],
+  afro:     ['fro'],
+  undercut: ['theCaesarAndSidePart'],
 };
 
 const PORTRAIT_HAIR_COLOR = {
-  black:      ['black'],
-  dark_brown: ['brownDark'],
-  brown:      ['brown'],
-  blonde:     ['blondeGolden'],
-  red:        ['auburn'],
-  white:      ['platinum'],
+  black:      ['2c1b18'],
+  dark_brown: ['4a312c'],
+  brown:      ['724133'],
+  blonde:     ['d6b370'],
+  red:        ['a55728'],
+  white:      ['e8e1e1'],
 };
 
 const PORTRAIT_EYEBROW = {
-  1: ['DefaultNatural'],
-  2: ['Default'],
-  3: ['RaisedExcitedNatural'],
-  4: ['UpDown'],
-  5: ['FlatNatural'],
+  1: ['defaultNatural'],
+  2: ['default'],
+  3: ['raisedExcitedNatural'],
+  4: ['upDown'],
+  5: ['flatNatural'],
 };
 
 const PORTRAIT_EYES = {
-  1: ['Default'],
-  2: ['Squint'],
-  3: ['Default'],
-  4: ['Side'],
-  5: ['Happy'],
+  1: ['default'],
+  2: ['squint'],
+  3: ['default'],
+  4: ['side'],
+  5: ['happy'],
 };
 
 const PORTRAIT_JERSEY = {
-  egypt: ['Red'], brazil: ['PastelYellow'], england: ['White'], france: ['Blue01'],
-  spain: ['Red'], argentina: ['Blue02'], portugal: ['Red'], germany: ['White'],
-  netherlands: ['PastelOrange'], italy: ['Blue01'], nigeria: ['PastelGreen'],
-  senegal: ['White'], ghana: ['Gray01'], morocco: ['Red'], ivory_coast: ['PastelOrange'],
-  cameroon: ['PastelGreen'], algeria: ['White'], japan: ['Blue03'],
-  south_korea: ['Red'], usa: ['Blue02'], mexico: ['PastelGreen'],
-  colombia: ['PastelYellow'], uruguay: ['Blue01'], croatia: ['Red'],
-  sweden: ['PastelYellow'], turkey: ['Red'], poland: ['White'],
-  serbia: ['Red'], denmark: ['Red'], saudi: ['PastelGreen'],
+  egypt: ['e53935'], brazil: ['fdd835'], england: ['ffffff'], france: ['1e3a8a'],
+  spain: ['e53935'], argentina: ['6db6e0'], portugal: ['c62828'], germany: ['ffffff'],
+  netherlands: ['ff8a3d'], italy: ['1565c0'], nigeria: ['2e9e4f'],
+  senegal: ['ffffff'], ghana: ['9e9e9e'], morocco: ['c62828'], ivory_coast: ['ff8a3d'],
+  cameroon: ['2e9e4f'], algeria: ['ffffff'], japan: ['1d4ed8'],
+  south_korea: ['e53935'], usa: ['1e3a8a'], mexico: ['2e9e4f'],
+  colombia: ['fdd835'], uruguay: ['29b6f6'], croatia: ['e53935'],
+  sweden: ['fdd835'], turkey: ['e53935'], poland: ['ffffff'],
+  serbia: ['e53935'], denmark: ['e53935'], saudi: ['2e9e4f'],
 };
 
 export function renderPortrait(state) {
@@ -133,18 +134,17 @@ export function renderPortrait(state) {
 
   const svg = createAvatar(avataaars, {
     seed,
-    dataUri:     false,
-    skinColor:   PORTRAIT_SKIN[state.skinTone]        || ['tanned'],
-    top:         PORTRAIT_HAIR_TOP[state.hairStyle]   || ['ShortHairShortFlat'],
-    hairColor:   PORTRAIT_HAIR_COLOR[state.hairColor] || ['black'],
-    eyebrow:     PORTRAIT_EYEBROW[state.eyebrowStyle] || ['Default'],
-    eyes:        PORTRAIT_EYES[state.facePreset]      || ['Default'],
-    mouth:       ['Default'],
-    accessories: ['Blank'],
-    facialHair:  ['Blank'],
-    clotheType:  ['ShirtCrewNeck'],
-    clotheColor: PORTRAIT_JERSEY[state.nationality]   || ['Blue02'],
-    style:       ['Circle'],
+    skinColor:    PORTRAIT_SKIN[state.skinTone]        || ['d08b5b'],
+    top:          PORTRAIT_HAIR_TOP[state.hairStyle]   || ['shortFlat'],
+    hairColor:    PORTRAIT_HAIR_COLOR[state.hairColor] || ['2c1b18'],
+    eyebrows:     PORTRAIT_EYEBROW[state.eyebrowStyle] || ['default'],
+    eyes:         PORTRAIT_EYES[state.facePreset]      || ['default'],
+    mouth:        ['default'],
+    accessoriesProbability: 0,
+    facialHairProbability:  0,
+    clothing:     ['shirtCrewNeck'],
+    clothesColor: PORTRAIT_JERSEY[state.nationality]   || ['6db6e0'],
+    style:        ['circle'],
   }).toString();
 
   return `<div class="portrait-frame">${svg}</div>`;
@@ -155,19 +155,18 @@ export function getPlayerPortraitSVG(small = false) {
   const app = p.appearance || {};
 
   return createAvatar(avataaars, {
-    seed:        (p.name || 'player').replace(/\s+/g, ''),
-    dataUri:     false,
-    skinColor:   PORTRAIT_SKIN[app.skinTone]        || ['tanned'],
-    top:         PORTRAIT_HAIR_TOP[app.hairStyle]   || ['ShortHairShortFlat'],
-    hairColor:   PORTRAIT_HAIR_COLOR[app.hairColor] || ['black'],
-    eyebrow:     PORTRAIT_EYEBROW[app.eyebrowStyle] || ['Default'],
-    eyes:        PORTRAIT_EYES[app.facePreset]      || ['Default'],
-    mouth:       ['Default'],
-    accessories: ['Blank'],
-    facialHair:  ['Blank'],
-    clotheType:  ['ShirtCrewNeck'],
-    clotheColor: PORTRAIT_JERSEY[p.nationality]     || ['Blue02'],
-    style:       ['Circle'],
+    seed:         (p.name || 'player').replace(/\s+/g, ''),
+    skinColor:    PORTRAIT_SKIN[app.skinTone]        || ['d08b5b'],
+    top:          PORTRAIT_HAIR_TOP[app.hairStyle]   || ['shortFlat'],
+    hairColor:    PORTRAIT_HAIR_COLOR[app.hairColor] || ['2c1b18'],
+    eyebrows:     PORTRAIT_EYEBROW[app.eyebrowStyle] || ['default'],
+    eyes:         PORTRAIT_EYES[app.facePreset]      || ['default'],
+    mouth:        ['default'],
+    accessoriesProbability: 0,
+    facialHairProbability:  0,
+    clothing:     ['shirtCrewNeck'],
+    clothesColor: PORTRAIT_JERSEY[p.nationality]     || ['6db6e0'],
+    style:        ['circle'],
   }).toString();
 }
 
