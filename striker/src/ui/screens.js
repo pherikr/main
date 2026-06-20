@@ -7,17 +7,19 @@ import { WEAPONS, DISCOVER_OPTION } from '../data/weapons.js';
 import { GameState } from '../engine/GameState.js';
 import { RatingEngine } from '../engine/RatingEngine.js';
 import { renderPitchMap } from './pitchMap.js';
+import { createAvatar } from '@dicebear/core';
+import { avataaars } from '@dicebear/collection';
 import { renderStatsBlock } from '../data/events_flavor.js';
 
 // ── CREATOR DATA CONSTANTS ────────────────────────────────────────────────────
 
 export const SKIN_TONES = {
-  1: { base: '#FDDBB4', shadow: '#E8B98A', name: 'Very Light' },
-  2: { base: '#EDB98A', shadow: '#C9956A', name: 'Light'      },
-  3: { base: '#C68642', shadow: '#A06A2A', name: 'Medium'     },
-  4: { base: '#8D5524', shadow: '#6B3A1A', name: 'Tan'        },
-  5: { base: '#5C3317', shadow: '#3D200E', name: 'Dark'       },
-  6: { base: '#3B1E08', shadow: '#261205', name: 'Very Dark'  },
+  1: { name: 'Very Light', base: '#ffdbb4' },
+  2: { name: 'Light',      base: '#edb98a' },
+  3: { name: 'Medium',     base: '#d08b5b' },
+  4: { name: 'Tan',        base: '#ae5d29' },
+  5: { name: 'Dark',       base: '#614335' },
+  6: { name: 'Very Dark',  base: '#3a2620' },
 };
 
 export const HAIR_COLORS = {
@@ -66,112 +68,106 @@ export const ARCHETYPES = {
   ],
 };
 
-// ── PORTRAIT RENDER HELPERS ───────────────────────────────────────────────────
+// ── PORTRAIT — DiceBear avataaars v8 (local, no network) ─────────────────────
 
-function getJerseyColor(nationality) {
-  const m = { egypt:'#CC0000', brazil:'#F7D11E', england:'#CCCCCC', france:'#003189',
-              spain:'#CC0000', argentina:'#74ACDF', portugal:'#006600', germany:'#CCCCCC',
-              netherlands:'#FF6600', italy:'#003189', nigeria:'#008000', senegal:'#00853F',
-              ghana:'#006B3F', morocco:'#C1272D', default:'#1a3a6e' };
-  return m[nationality] || m.default;
-}
+// DiceBear v8 avataaars uses HEX color strings (no '#') and camelCase enum values.
+const PORTRAIT_SKIN = {
+  1: ['ffdbb4'],
+  2: ['edb98a'],
+  3: ['d08b5b'],
+  4: ['ae5d29'],
+  5: ['614335'],
+  6: ['3a2620'],
+};
 
-function renderEyesHelper(preset, skinTone, faceW, tall) {
-  const eyeY = 126 + tall * 2;
-  const spread = faceW * 0.42;
-  const lx = 100 - spread, rx = 100 + spread;
-  const eyeW = [8,9,8,7,7][(preset||1)-1] || 8;
-  const eyeH = [6,7,5,6,7][(preset||1)-1] || 6;
-  const irisCol = skinTone <= 2 ? '#4A7FA5' : skinTone <= 4 ? '#5C3A1A' : '#1A1A1A';
-  return `
-    <ellipse cx="${lx}" cy="${eyeY}" rx="${eyeW}" ry="${eyeH}" fill="white"/>
-    <ellipse cx="${lx}" cy="${eyeY}" rx="${eyeW-3}" ry="${eyeH-1}" fill="${irisCol}"/>
-    <ellipse cx="${lx+1}" cy="${eyeY-1}" rx="2" ry="2" fill="white" opacity="0.6"/>
-    <ellipse cx="${rx}" cy="${eyeY}" rx="${eyeW}" ry="${eyeH}" fill="white"/>
-    <ellipse cx="${rx}" cy="${eyeY}" rx="${eyeW-3}" ry="${eyeH-1}" fill="${irisCol}"/>
-    <ellipse cx="${rx+1}" cy="${eyeY-1}" rx="2" ry="2" fill="white" opacity="0.6"/>`;
-}
+const PORTRAIT_HAIR_TOP = {
+  buzz:     ['theCaesar'],
+  fade:     ['shavedSides'],
+  short:    ['shortFlat'],
+  messy:    ['shortWaved'],
+  curly:    ['curly'],
+  long:     ['longButNotTooLong'],
+  afro:     ['fro'],
+  undercut: ['theCaesarAndSidePart'],
+};
 
-function renderEyebrowsHelper(style, color, faceW) {
-  const y = 116, s = faceW * 0.42;
-  const defs = [
-    `<path d="M ${100-s-8} ${y} Q ${100-s+2} ${y-3} ${100-s+10} ${y}" stroke="${color}" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-     <path d="M ${100+s-10} ${y} Q ${100+s-2} ${y-3} ${100+s+8} ${y}" stroke="${color}" stroke-width="1.5" fill="none" stroke-linecap="round"/>`,
-    `<path d="M ${100-s-8} ${y} Q ${100-s+2} ${y-4} ${100-s+10} ${y+1}" stroke="${color}" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-     <path d="M ${100+s-10} ${y+1} Q ${100+s-2} ${y-4} ${100+s+8} ${y}" stroke="${color}" stroke-width="2.5" fill="none" stroke-linecap="round"/>`,
-    `<path d="M ${100-s-8} ${y+1} Q ${100-s+2} ${y-5} ${100-s+10} ${y+2}" stroke="${color}" stroke-width="4" fill="none" stroke-linecap="round"/>
-     <path d="M ${100+s-10} ${y+2} Q ${100+s-2} ${y-5} ${100+s+8} ${y+1}" stroke="${color}" stroke-width="4" fill="none" stroke-linecap="round"/>`,
-    `<path d="M ${100-s-6} ${y+2} Q ${100-s+4} ${y-7} ${100-s+11} ${y}" stroke="${color}" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-     <path d="M ${100+s-11} ${y} Q ${100+s-4} ${y-7} ${100+s+6} ${y+2}" stroke="${color}" stroke-width="2.5" fill="none" stroke-linecap="round"/>`,
-    `<path d="M ${100-s-7} ${y} L ${100-s+10} ${y}" stroke="${color}" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-     <path d="M ${100+s-10} ${y} L ${100+s+7} ${y}" stroke="${color}" stroke-width="2.5" fill="none" stroke-linecap="round"/>`,
-  ];
-  return defs[((style||2) - 1) % defs.length] || defs[1];
-}
+const PORTRAIT_HAIR_COLOR = {
+  black:      ['2c1b18'],
+  dark_brown: ['4a312c'],
+  brown:      ['724133'],
+  blonde:     ['d6b370'],
+  red:        ['a55728'],
+  white:      ['e8e1e1'],
+};
 
-function renderHairHelper(style, color, faceW) {
-  const styles = {
-    buzz:     `<ellipse cx="100" cy="98" rx="${faceW+2}" ry="28" fill="${color}"/>`,
-    fade:     `<path d="M ${100-faceW-2} 128 Q ${100-faceW-2} 80 ${100-faceW+5} 76 Q 100 68 ${100+faceW-5} 76 Q ${100+faceW+2} 80 ${100+faceW+2} 128" fill="${color}"/>
-               <ellipse cx="100" cy="83" rx="${faceW-4}" ry="22" fill="${color}"/>`,
-    short:    `<path d="M ${100-faceW-2} 125 Q ${100-faceW-4} 85 ${100-faceW+8} 72 Q 100 62 ${100+faceW-8} 72 Q ${100+faceW+4} 85 ${100+faceW+2} 125" fill="${color}"/>`,
-    messy:    `<path d="M ${100-faceW-2} 124 Q ${100-faceW-6} 82 ${100-faceW+6} 68 Q 100 58 ${100+faceW-6} 68 Q ${100+faceW+6} 82 ${100+faceW+2} 124" fill="${color}"/>
-               <path d="M ${100-faceW+4} 68 Q ${100-10} 52 ${100+4} 58" stroke="${color}" stroke-width="8" fill="none" stroke-linecap="round"/>
-               <path d="M 100 60 Q ${100+14} 48 ${100+faceW-6} 64" stroke="${color}" stroke-width="7" fill="none" stroke-linecap="round"/>
-               <path d="M ${100-faceW+10} 72 Q ${100-18} 54 ${100-4} 60" stroke="${color}" stroke-width="6" fill="none" stroke-linecap="round"/>`,
-    curly:    `<ellipse cx="100" cy="90" rx="${faceW+8}" ry="38" fill="${color}"/>
-               <circle cx="${100-faceW-2}" cy="108" r="10" fill="${color}"/>
-               <circle cx="${100+faceW+2}" cy="108" r="10" fill="${color}"/>
-               <circle cx="${100-faceW+6}" cy="70" r="12" fill="${color}"/>
-               <circle cx="${100+faceW-6}" cy="70" r="12" fill="${color}"/>
-               <circle cx="100" cy="65" r="14" fill="${color}"/>`,
-    long:     `<path d="M ${100-faceW-2} 125 Q ${100-faceW-8} 160 ${100-faceW-4} 200 Q ${100-20} 218 100 220 Q ${100+20} 218 ${100+faceW+4} 200 Q ${100+faceW+8} 160 ${100+faceW+2} 125 Q ${100+faceW+4} 82 ${100+faceW-8} 70 Q 100 58 ${100-faceW+8} 70 Q ${100-faceW-4} 82 ${100-faceW-2} 125" fill="${color}"/>`,
-    afro:     `<ellipse cx="100" cy="92" rx="${faceW+22}" ry="52" fill="${color}"/>
-               <ellipse cx="100" cy="116" rx="${faceW+8}" ry="20" fill="${color}"/>`,
-    undercut: `<path d="M ${100-faceW-2} 128 Q ${100-faceW-2} 92 ${100-faceW+8} 76 Q 100 66 ${100+faceW-8} 76 Q ${100+faceW+2} 92 ${100+faceW+2} 128" fill="${color}" opacity="0.5"/>
-               <ellipse cx="100" cy="78" rx="${faceW-6}" ry="18" fill="${color}"/>
-               <path d="M ${100-faceW+8} 76 Q 100 70 ${100+faceW-8} 76 Q 100 95 ${100-faceW+8} 76" fill="${color}"/>`,
-  };
-  return styles[style] || styles.short;
-}
+const PORTRAIT_EYEBROW = {
+  1: ['defaultNatural'],
+  2: ['default'],
+  3: ['raisedExcitedNatural'],
+  4: ['upDown'],
+  5: ['flatNatural'],
+};
+
+const PORTRAIT_EYES = {
+  1: ['default'],
+  2: ['squint'],
+  3: ['default'],
+  4: ['side'],
+  5: ['happy'],
+};
+
+const PORTRAIT_JERSEY = {
+  egypt: ['e53935'], brazil: ['fdd835'], england: ['ffffff'], france: ['1e3a8a'],
+  spain: ['e53935'], argentina: ['6db6e0'], portugal: ['c62828'], germany: ['ffffff'],
+  netherlands: ['ff8a3d'], italy: ['1565c0'], nigeria: ['2e9e4f'],
+  senegal: ['ffffff'], ghana: ['9e9e9e'], morocco: ['c62828'], ivory_coast: ['ff8a3d'],
+  cameroon: ['2e9e4f'], algeria: ['ffffff'], japan: ['1d4ed8'],
+  south_korea: ['e53935'], usa: ['1e3a8a'], mexico: ['2e9e4f'],
+  colombia: ['fdd835'], uruguay: ['29b6f6'], croatia: ['e53935'],
+  sweden: ['fdd835'], turkey: ['e53935'], poland: ['ffffff'],
+  serbia: ['e53935'], denmark: ['e53935'], saudi: ['2e9e4f'],
+};
 
 export function renderPortrait(state) {
-  const skin    = SKIN_TONES[state.skinTone || 2];
-  const hairCol = HAIR_COLORS[state.hairColor || 'black'];
-  const tall    = Math.max(0, ((state.height || 178) - 178) / 27);
-  const heavy   = Math.max(0, ((state.weight || 72) - 72) / 38);
-  const slim    = Math.max(0, (72 - (state.weight || 72)) / 17);
-  const faceW   = ([54,50,58,52,46][(state.facePreset||1)-1] || 54) + heavy * 6 - slim * 4;
-  const faceH   = ([68,72,60,66,76][(state.facePreset||1)-1] || 68) + tall * 4;
-  const jerseyColor = getJerseyColor(state.nationality);
+  const namePart = ((state.firstName || '') + (state.lastName || '')).trim();
+  const seed = namePart || 'player';
 
-  return `<svg viewBox="0 0 200 260" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:156px">
-  <defs>
-    <radialGradient id="bgGrad" cx="50%" cy="40%" r="60%">
-      <stop offset="0%" stop-color="rgba(40,40,50,1)"/>
-      <stop offset="100%" stop-color="rgba(11,12,15,1)"/>
-    </radialGradient>
-    <filter id="softShadow"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.4"/></filter>
-  </defs>
-  <rect width="200" height="260" fill="url(#bgGrad)" rx="10"/>
-  <path d="M 45 260 L 45 210 Q 45 195 60 188 L 78 182 L 100 188 L 122 182 L 140 188 Q 155 195 155 210 L 155 260 Z" fill="${jerseyColor}" filter="url(#softShadow)"/>
-  <path d="M 85 182 Q 100 195 115 182" stroke="rgba(255,255,255,0.3)" fill="none" stroke-width="2"/>
-  <text x="100" y="235" text-anchor="middle" fill="rgba(255,255,255,0.25)" font-family="Bebas Neue, sans-serif" font-size="28">16</text>
-  <rect x="84" y="${168 - tall * 4}" width="32" height="${28 + tall * 4}" rx="8" fill="${skin.base}"/>
-  <ellipse cx="${100 - faceW - 2}" cy="${130 + tall * 2}" rx="9" ry="13" fill="${skin.base}"/>
-  <ellipse cx="${100 - faceW + 1}" cy="${130 + tall * 2}" rx="5" ry="9" fill="${skin.shadow}"/>
-  <ellipse cx="${100 + faceW + 2}" cy="${130 + tall * 2}" rx="9" ry="13" fill="${skin.base}"/>
-  <ellipse cx="${100 + faceW - 1}" cy="${130 + tall * 2}" rx="5" ry="9" fill="${skin.shadow}"/>
-  <ellipse cx="100" cy="${132 + tall * 2}" rx="${faceW}" ry="${faceH / 2}" fill="${skin.base}" filter="url(#softShadow)"/>
-  <ellipse cx="${100 - faceW * 0.55}" cy="${140 + tall * 2}" rx="12" ry="8" fill="${skin.shadow}" opacity="0.3"/>
-  <ellipse cx="${100 + faceW * 0.55}" cy="${140 + tall * 2}" rx="12" ry="8" fill="${skin.shadow}" opacity="0.3"/>
-  ${renderEyesHelper(state.facePreset, state.skinTone, faceW, tall)}
-  <ellipse cx="100" cy="${146 + tall * 2}" rx="4" ry="${5 + heavy}" fill="${skin.shadow}" opacity="0.4"/>
-  <path d="M ${96 - heavy} ${152 + tall * 2} Q 100 ${156 + tall * 2} ${104 + heavy} ${152 + tall * 2}" stroke="${skin.shadow}" fill="none" stroke-width="1.2" opacity="0.5"/>
-  <path d="M ${88 - heavy} ${162 + tall * 2} Q 100 ${168 + tall * 2} ${112 + heavy} ${162 + tall * 2}" stroke="${skin.shadow}" fill="none" stroke-width="2" stroke-linecap="round"/>
-  ${renderEyebrowsHelper(state.eyebrowStyle, skin.shadow, faceW)}
-  ${renderHairHelper(state.hairStyle, hairCol, faceW)}
-</svg>`;
+  const svg = createAvatar(avataaars, {
+    seed,
+    skinColor:    PORTRAIT_SKIN[state.skinTone]        || ['d08b5b'],
+    top:          PORTRAIT_HAIR_TOP[state.hairStyle]   || ['shortFlat'],
+    hairColor:    PORTRAIT_HAIR_COLOR[state.hairColor] || ['2c1b18'],
+    eyebrows:     PORTRAIT_EYEBROW[state.eyebrowStyle] || ['default'],
+    eyes:         PORTRAIT_EYES[state.facePreset]      || ['default'],
+    mouth:        ['default'],
+    accessoriesProbability: 0,
+    facialHairProbability:  0,
+    clothing:     ['shirtCrewNeck'],
+    clothesColor: PORTRAIT_JERSEY[state.nationality]   || ['6db6e0'],
+    style:        ['circle'],
+  }).toString();
+
+  return `<div class="portrait-frame">${svg}</div>`;
+}
+
+export function getPlayerPortraitSVG(small = false) {
+  const p   = GameState.player;
+  const app = p.appearance || {};
+
+  return createAvatar(avataaars, {
+    seed:         (p.name || 'player').replace(/\s+/g, ''),
+    skinColor:    PORTRAIT_SKIN[app.skinTone]        || ['d08b5b'],
+    top:          PORTRAIT_HAIR_TOP[app.hairStyle]   || ['shortFlat'],
+    hairColor:    PORTRAIT_HAIR_COLOR[app.hairColor] || ['2c1b18'],
+    eyebrows:     PORTRAIT_EYEBROW[app.eyebrowStyle] || ['default'],
+    eyes:         PORTRAIT_EYES[app.facePreset]      || ['default'],
+    mouth:        ['default'],
+    accessoriesProbability: 0,
+    facialHairProbability:  0,
+    clothing:     ['shirtCrewNeck'],
+    clothesColor: PORTRAIT_JERSEY[p.nationality]     || ['6db6e0'],
+    style:        ['circle'],
+  }).toString();
 }
 
 export function renderCreatorCard(state) {
@@ -221,9 +217,56 @@ export function calcOverallFromStats(stats, pos) {
 export function creationScreen() { return ''; }
 export function statCardScreen()  { return ''; }
 
+// ── SQUAD HELPERS ─────────────────────────────────────────────────────────────
+
+export function assignSquad(position, playerName, nationality) {
+  const names = (NATIONALITY_NAMES[nationality] || NATIONALITY_NAMES.default).slice();
+  const shuffled = names.sort(() => Math.random() - 0.5);
+  let idx = 0;
+  const posMap = { ST: 'ST', CAM: 'CM', LW: 'LW', RW: 'RW' };
+  const playerSpot = posMap[position] || 'ST';
+
+  const starters = Object.entries(FORMATION_433).map(([key, pos]) => {
+    if (key === playerSpot) return { key, x: pos.x, y: pos.y, label: pos.label, name: playerName, isPlayer: true };
+    return { key, x: pos.x, y: pos.y, label: pos.label, name: shuffled[idx++ % shuffled.length], isPlayer: false };
+  });
+
+  const subPositions = ['GK', 'CB', 'CB', 'CM', 'LW', 'ST'];
+  const subs = subPositions.map(p => ({ name: shuffled[idx++ % shuffled.length], pos: p }));
+
+  return { starters, subs };
+}
+
+export function renderSquadFormation(squad) {
+  const circles = squad.starters.map(pl => {
+    const cx = (pl.x / 100) * 240;
+    const cy = (pl.y / 100) * 200;
+    return `<g>
+      <circle cx="${cx}" cy="${cy}" r="${pl.isPlayer ? 9 : 6.5}"
+        fill="${pl.isPlayer ? '#e8ff47' : 'rgba(255,255,255,0.85)'}"
+        stroke="${pl.isPlayer ? '#000' : 'rgba(0,0,0,0.3)'}" stroke-width="${pl.isPlayer ? 1.5 : 1}"/>
+      <text x="${cx}" y="${cy + (pl.isPlayer ? 18 : 15)}" text-anchor="middle"
+        fill="${pl.isPlayer ? '#e8ff47' : 'rgba(255,255,255,0.55)'}"
+        font-size="${pl.isPlayer ? '7' : '6'}" font-weight="${pl.isPlayer ? 'bold' : 'normal'}"
+        font-family="Barlow Condensed, sans-serif">${pl.isPlayer ? 'YOU' : pl.name}</text>
+    </g>`;
+  }).join('');
+
+  return `<svg viewBox="0 0 240 200" style="width:100%;max-width:220px;display:block;margin:0 auto">
+    <rect width="240" height="200" fill="#1a3a14" rx="6"/>
+    ${Array.from({length:6},(_,i)=>`<rect x="${i*40}" y="0" width="40" height="200" fill="rgba(0,0,0,${i%2===0?'0.05':'0'})"/>`).join('')}
+    <rect x="8" y="8" width="224" height="184" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>
+    <line x1="8" y1="100" x2="232" y2="100" stroke="rgba(255,255,255,0.2)" stroke-width="0.8"/>
+    <circle cx="120" cy="100" r="22" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="0.8"/>
+    <rect x="80" y="8" width="80" height="26" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="0.8"/>
+    <rect x="80" y="166" width="80" height="26" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="0.8"/>
+    ${circles}
+  </svg>`;
+}
+
 // ── CLUB OFFERS DATA ─────────────────────────────────────────────────────────
 
-const CLUB_OFFERS = {
+export const CLUB_OFFERS = {
   elite: [
     { name: 'Arsenal Academy',    badge: '🔴', league: 'Premier League Academy' },
     { name: 'Chelsea Academy',    badge: '💙', league: 'Premier League Academy' },
@@ -780,7 +823,7 @@ export function postMatchScreen() {
   <div class="pm-stat-gains" id="stat-gains-reveal" style="display:none">
     <div class="pm-sg-label">STAT IMPROVEMENTS</div>
     <div id="stat-gains-list"></div>
-    <button class="cta-btn" id="play-again-btn" style="margin-top:2rem">Play Again →</button>
+    <button class="cta-btn" id="play-again-btn" style="margin-top:2rem">Continue →</button>
   </div>
 </div>`;
 }
