@@ -98,7 +98,17 @@ export const GameState = {
     offPitchEvent: null,
   },
 
+  // Career & Trial
+  trial: null,
+  currentTrialMatch: null,
+  currentFixture: null,
+  career: null,
+
   reset() {
+    this.trial = null;
+    this.currentTrialMatch = null;
+    this.currentFixture = null;
+    this.career = null;
     this.match = {
       minute: 0,
       score: { us: 0, them: 0 },
