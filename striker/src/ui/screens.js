@@ -217,9 +217,56 @@ export function calcOverallFromStats(stats, pos) {
 export function creationScreen() { return ''; }
 export function statCardScreen()  { return ''; }
 
+// ── SQUAD HELPERS ─────────────────────────────────────────────────────────────
+
+export function assignSquad(position, playerName, nationality) {
+  const names = (NATIONALITY_NAMES[nationality] || NATIONALITY_NAMES.default).slice();
+  const shuffled = names.sort(() => Math.random() - 0.5);
+  let idx = 0;
+  const posMap = { ST: 'ST', CAM: 'CM', LW: 'LW', RW: 'RW' };
+  const playerSpot = posMap[position] || 'ST';
+
+  const starters = Object.entries(FORMATION_433).map(([key, pos]) => {
+    if (key === playerSpot) return { key, x: pos.x, y: pos.y, label: pos.label, name: playerName, isPlayer: true };
+    return { key, x: pos.x, y: pos.y, label: pos.label, name: shuffled[idx++ % shuffled.length], isPlayer: false };
+  });
+
+  const subPositions = ['GK', 'CB', 'CB', 'CM', 'LW', 'ST'];
+  const subs = subPositions.map(p => ({ name: shuffled[idx++ % shuffled.length], pos: p }));
+
+  return { starters, subs };
+}
+
+export function renderSquadFormation(squad) {
+  const circles = squad.starters.map(pl => {
+    const cx = (pl.x / 100) * 240;
+    const cy = (pl.y / 100) * 200;
+    return `<g>
+      <circle cx="${cx}" cy="${cy}" r="${pl.isPlayer ? 9 : 6.5}"
+        fill="${pl.isPlayer ? '#e8ff47' : 'rgba(255,255,255,0.85)'}"
+        stroke="${pl.isPlayer ? '#000' : 'rgba(0,0,0,0.3)'}" stroke-width="${pl.isPlayer ? 1.5 : 1}"/>
+      <text x="${cx}" y="${cy + (pl.isPlayer ? 18 : 15)}" text-anchor="middle"
+        fill="${pl.isPlayer ? '#e8ff47' : 'rgba(255,255,255,0.55)'}"
+        font-size="${pl.isPlayer ? '7' : '6'}" font-weight="${pl.isPlayer ? 'bold' : 'normal'}"
+        font-family="Barlow Condensed, sans-serif">${pl.isPlayer ? 'YOU' : pl.name}</text>
+    </g>`;
+  }).join('');
+
+  return `<svg viewBox="0 0 240 200" style="width:100%;max-width:220px;display:block;margin:0 auto">
+    <rect width="240" height="200" fill="#1a3a14" rx="6"/>
+    ${Array.from({length:6},(_,i)=>`<rect x="${i*40}" y="0" width="40" height="200" fill="rgba(0,0,0,${i%2===0?'0.05':'0'})"/>`).join('')}
+    <rect x="8" y="8" width="224" height="184" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>
+    <line x1="8" y1="100" x2="232" y2="100" stroke="rgba(255,255,255,0.2)" stroke-width="0.8"/>
+    <circle cx="120" cy="100" r="22" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="0.8"/>
+    <rect x="80" y="8" width="80" height="26" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="0.8"/>
+    <rect x="80" y="166" width="80" height="26" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="0.8"/>
+    ${circles}
+  </svg>`;
+}
+
 // ── CLUB OFFERS DATA ─────────────────────────────────────────────────────────
 
-const CLUB_OFFERS = {
+export const CLUB_OFFERS = {
   elite: [
     { name: 'Arsenal Academy',    badge: '🔴', league: 'Premier League Academy' },
     { name: 'Chelsea Academy',    badge: '💙', league: 'Premier League Academy' },

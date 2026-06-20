@@ -13,6 +13,7 @@ import {
   backgroundStep1Screen, backgroundStep2Screen, youthEventScreen, youthEventResultScreen, academyXIScreen,
   renderPortrait, renderCreatorCard, SKIN_TONES, HAIR_COLORS, HAIR_STYLES_LABELS,
   POSITION_DATA, ARCHETYPES, calcOverallFromStats,
+  CLUB_OFFERS, assignSquad, renderSquadFormation,
 } from './screens.js';
 import { NATIONS } from '../data/nations.js';
 import { BACKGROUNDS, SCHOOL_FOCUS, YOUTH_EVENTS } from '../data/background.js';
@@ -116,14 +117,14 @@ function wireFooter(validate, nextFn) {
     const label = document.querySelector('.creator-step-label')?.textContent || '';
     const cur = parseInt(label.match(/\d+/)?.[0] || '1');
     if (cur > 1 && stepFns[cur]) stepFns[cur]();
-    else if (cur === 1) startGame();
+    else if (cur === 1) showMainMenu();
   });
 }
 
 // ── CREATION — STEP 1: IDENTITY ───────────────────────────────────────────────
 
 function showCreation() {
-  showCreatorStep1();
+  showMainMenu();
 }
 
 function showCreatorStep1() {
@@ -718,10 +719,7 @@ function showYouthEventResult(eventDef, choiceId, idx) {
 }
 
 function showAcademyXI() {
-  app.innerHTML = academyXIScreen();
-  document.getElementById('kick-off-btn').addEventListener('click', () => {
-    startMatch();
-  });
+  showYouthClubPlacement();
 }
 
 // ── MATCH ─────────────────────────────────────────────────────────────────────
@@ -1217,7 +1215,7 @@ function showStatGains() {
   el.style.display = 'block';
   el.classList.add('animate__animated', 'animate__fadeInUp');
 
-  document.getElementById('play-again-btn').addEventListener('click', () => startGame());
+  document.getElementById('play-again-btn').addEventListener('click', () => handlePostMatchFlowEnd());
 }
 
 function generateStatGains() {
@@ -1233,6 +1231,923 @@ function generateStatGains() {
   gains.confidence = m.rating >= 7 ? 2 : m.rating >= 6 ? 1 : 0;
 
   return Object.fromEntries(Object.entries(gains).filter(([,v]) => v > 0));
+}
+
+// ── MAIN MENU ─────────────────────────────────────────────────────────────────
+
+function showMainMenu() {
+  app.innerHTML = `
+    <div class="screen main-menu-screen animate__animated animate__fadeIn">
+      <div class="mm-logo">STRIKER</div>
+      <div class="mm-tagline">Your story starts now.</div>
+      <div class="mm-menu-buttons">
+        <button class="cta-btn mm-btn-primary" id="mm-new-game">New Game</button>
+        <button class="cta-btn mm-btn-secondary" id="mm-continue" disabled>
+          Continue
+          <span class="mm-continue-note">No saved career yet</span>
+        </button>
+        <button class="cta-btn mm-btn-ghost" id="mm-settings">Settings</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('mm-new-game').addEventListener('click', showCreatorStep1);
+  document.getElementById('mm-settings').addEventListener('click', () => showToast('Settings coming soon', '⚙️'));
+}
+
+// ── YOUTH CLUB PLACEMENT ──────────────────────────────────────────────────────
+
+function showYouthClubPlacement() {
+  const p = GameState.player;
+  const nation = NATIONS.find(n => n.id === p.nationality);
+  const clubPool = CLUB_OFFERS.local[p.nationality] || CLUB_OFFERS.local.default;
+  const club = clubPool[Math.floor(Math.random() * clubPool.length)];
+
+  GameState.career = {
+    clubName: club.name,
+    clubBadge: club.badge,
+    clubLeague: club.league,
+    squad: assignSquad(p.position, p.name, p.nationality),
+  };
+
+  app.innerHTML = `
+    <div class="screen placement-screen animate__animated animate__fadeIn">
+      <div class="placement-badge">${club.badge}</div>
+      <div class="placement-eyebrow">${nation?.flag || ''} Youth Trial</div>
+      <div class="placement-title">${club.name}</div>
+      <div class="placement-sub">${club.league}</div>
+      <div class="placement-text">
+        Your background has earned you a trial place at ${club.name}.
+        Nothing is guaranteed yet — you'll need to prove it on the pitch.
+      </div>
+      <div class="placement-formation">${renderSquadFormation(GameState.career.squad)}</div>
+      <button class="cta-btn placement-btn" id="placement-continue">Begin Your Trial →</button>
+    </div>
+  `;
+  document.getElementById('placement-continue').addEventListener('click', showTrialIntroScreen);
+}
+
+// ── THE TRIAL ─────────────────────────────────────────────────────────────────
+
+const TRIAL_OPPONENT_NAMES = [
+  'Riverside Trialists', 'City Selection B', 'Park District XI',
+  'Coastal Academy Hopefuls', 'Northside Trial Group', 'Regional Selection C',
+  'Camp Trialists A', 'Valley Youth Trial', 'Southgate Hopefuls',
+  'Old Boys Trial XI', "Bishop's Trial Selection", 'Iron District Youth',
+  'Harbor Trial Group', 'Crestwood Selection', 'Union Trial XI',
+];
+
+function simResult(teamA, teamB) {
+  const aScore = Math.max(0, Math.round((teamA.attack - teamB.defense) / 10 + (Math.random() * 3 - 1)));
+  const bScore = Math.max(0, Math.round((teamB.attack - teamA.defense) / 10 + (Math.random() * 3 - 1)));
+  return { aScore, bScore };
+}
+
+function generateTrialTeams(playerOverall) {
+  const playerTeam = { id: 'player_trial', name: GameState.player.name, attack: playerOverall, defense: playerOverall };
+  const opponents = TRIAL_OPPONENT_NAMES.map((name, i) => {
+    const base = 40 + Math.floor(i * 1.6);
+    return { id: `trial_opp_${i}`, name, attack: base + Math.floor(Math.random()*8), defense: base + Math.floor(Math.random()*8) - 2 };
+  });
+  return [playerTeam, ...opponents];
+}
+
+function generateTrialBracket(teams) {
+  const shuffled = [...teams].sort(() => Math.random() - 0.5);
+  const matches = [];
+  for (let i = 0; i < shuffled.length; i += 2) {
+    matches.push({ home: shuffled[i], away: shuffled[i+1], result: null, winner: null });
+  }
+  return { stage: 'Round of 16', matches };
+}
+
+function simulateOtherTrialMatches(round) {
+  round.matches.forEach(m => {
+    if (m.winner) return;
+    if (m.home.id === 'player_trial' || m.away.id === 'player_trial') return;
+    const r = simResult(m.home, m.away);
+    m.result = r;
+    m.winner = r.aScore >= r.bScore ? m.home : m.away;
+  });
+}
+
+function progressTrialRoundIfComplete() {
+  const trial = GameState.trial;
+  const round = trial.rounds[trial.rounds.length - 1];
+  if (!round.matches.every(m => m.winner)) return;
+  if (round.stage === 'Final') return;
+  const winners = round.matches.map(m => m.winner);
+  const nextStage = { 'Round of 16':'Quarter-Final', 'Quarter-Final':'Semi-Final', 'Semi-Final':'Final' }[round.stage];
+  const nextMatches = [];
+  for (let i = 0; i < winners.length; i += 2) {
+    nextMatches.push({ home: winners[i], away: winners[i+1] || winners[i], result: null, winner: null });
+  }
+  trial.rounds.push({ stage: nextStage, matches: nextMatches });
+}
+
+function resolveRestOfTrialBracketInstantly() {
+  const trial = GameState.trial;
+  while (true) {
+    const round = trial.rounds[trial.rounds.length - 1];
+    round.matches.forEach(m => {
+      if (!m.winner) {
+        const r = simResult(m.home, m.away);
+        m.result = r;
+        m.winner = r.aScore >= r.bScore ? m.home : m.away;
+      }
+    });
+    if (round.stage === 'Final') break;
+    progressTrialRoundIfComplete();
+  }
+}
+
+function showTrialIntroScreen() {
+  app.innerHTML = `
+    <div class="screen trial-intro-screen animate__animated animate__fadeIn">
+      <div class="trial-intro-icon">🏆</div>
+      <div class="trial-intro-title">THE TRIAL</div>
+      <div class="trial-intro-sub">Round of 16 Knockout</div>
+      <div class="trial-intro-text">
+        Fifteen other trialists want the same shirt you do. One bad
+        performance and you're going home. Win, and you walk into the
+        season as a starter.
+      </div>
+      <div class="trial-bracket-preview">Round of 16 → Quarter-Final → Semi-Final → Final</div>
+      <button class="cta-btn" id="trial-begin-btn">Begin Your Trial →</button>
+    </div>
+  `;
+  document.getElementById('trial-begin-btn').addEventListener('click', beginTrial);
+}
+
+function beginTrial() {
+  const teams = generateTrialTeams(GameState.player.overall);
+  GameState.trial = {
+    rounds: [generateTrialBracket(teams)],
+    eliminated: false,
+    eliminatedStage: null,
+    champion: false,
+    stats: { goals: 0, assists: 0, matchesPlayed: 0, ratings: [] },
+  };
+  const round = GameState.trial.rounds[0];
+  simulateOtherTrialMatches(round);
+  const myMatch = round.matches.find(m => m.home.id === 'player_trial' || m.away.id === 'player_trial');
+  launchTrialMatch(myMatch);
+}
+
+function launchTrialMatch(match) {
+  const opp = match.home.id === 'player_trial' ? match.away : match.home;
+  const gk = Math.round((opp.attack + opp.defense) / 2 - 4);
+  GameState.opponent = {
+    name: opp.name, attack: opp.attack, defense: opp.defense, gk,
+    defender: {
+      shortTackle: opp.defense, slideTackle: opp.defense - 4, positioning: opp.defense - 2,
+      pace: opp.attack - 6, physicality: opp.defense - 2, heading: opp.defense - 4,
+    },
+    gk_diving: gk, gk_reflexes: gk + 2, gk_composure: gk - 2,
+  };
+  GameState.currentTrialMatch = match;
+  startMatch();
+}
+
+function handlePostMatchFlowEnd() {
+  if (GameState.currentTrialMatch) {
+    const match = GameState.currentTrialMatch;
+    GameState.currentTrialMatch = null;
+    onTrialMatchComplete(match);
+  } else if (GameState.currentFixture) {
+    const fixture = GameState.currentFixture;
+    GameState.currentFixture = null;
+    onMatchComplete(fixture);
+  } else {
+    showCareerHub();
+  }
+}
+
+function onTrialMatchComplete(match) {
+  const m = GameState.match;
+  const trial = GameState.trial;
+
+  trial.stats.goals   += (m.goals || 0);
+  trial.stats.assists += (m.assists || 0);
+  trial.stats.matchesPlayed++;
+  trial.stats.ratings.push(m.rating || 6.0);
+
+  match.result = { aScore: m.score.us, bScore: m.score.them };
+  const winner = m.score.us >= m.score.them
+    ? (match.home.id === 'player_trial' ? match.home : match.away)
+    : (match.home.id === 'player_trial' ? match.away : match.home);
+  match.winner = winner;
+
+  if (winner.id !== 'player_trial') {
+    trial.eliminated = true;
+    trial.eliminatedStage = trial.rounds[trial.rounds.length - 1].stage;
+  }
+
+  simulateOtherTrialMatches(trial.rounds[trial.rounds.length - 1]);
+  progressTrialRoundIfComplete();
+
+  const lastRound = trial.rounds[trial.rounds.length - 1];
+  if (lastRound.stage === 'Final' && lastRound.matches.every(mm => mm.winner)) {
+    trial.champion = lastRound.matches[0].winner.id === 'player_trial';
+  }
+
+  showTrialProgressScreen();
+}
+
+function showTrialProgressScreen() {
+  const trial = GameState.trial;
+  const stillIn = !trial.eliminated && !trial.champion;
+
+  app.innerHTML = `
+    <div class="screen detail-screen animate__animated animate__fadeIn">
+      <div class="detail-title" style="text-align:center;margin-bottom:6px">THE TRIAL</div>
+      <div class="cup-bracket">
+        ${trial.rounds.map(round => `
+          <div class="cup-round">
+            <div class="cup-round-label">${round.stage}</div>
+            ${round.matches.map(m => `
+              <div class="cup-match ${(m.home.id==='player_trial'||m.away.id==='player_trial')?'cup-match-mine':''}">
+                <span class="${m.winner?.id===m.home.id?'cup-winner':''}">${m.home.name}</span>
+                <span class="cup-vs">${m.result?`${m.result.aScore}-${m.result.bScore}`:'vs'}</span>
+                <span class="${m.winner?.id===m.away.id?'cup-winner':''}">${m.away.name}</span>
+              </div>
+            `).join('')}
+          </div>
+        `).join('')}
+      </div>
+      <button class="cta-btn" id="trial-progress-continue" style="margin-top:16px">
+        ${stillIn ? 'Continue to Next Round →' : 'See Trial Results →'}
+      </button>
+    </div>
+  `;
+
+  document.getElementById('trial-progress-continue').addEventListener('click', () => {
+    if (stillIn) {
+      const round = trial.rounds[trial.rounds.length - 1];
+      const myMatch = round.matches.find(m => !m.winner && (m.home.id==='player_trial'||m.away.id==='player_trial'));
+      if (myMatch) launchTrialMatch(myMatch);
+    } else {
+      if (trial.eliminated) resolveRestOfTrialBracketInstantly();
+      showTrialCompleteSummary();
+    }
+  });
+}
+
+function getTrialOutcomeBonus() {
+  const trial = GameState.trial;
+  if (trial.champion) return { stardom: 18, managerRel: 80, bankBonus: 200, label: 'Trial Champion' };
+  const stage = trial.eliminatedStage || 'Final';
+  const map = {
+    'Round of 16':   { stardom: 0,  managerRel: 38, bankBonus: 20,  label: 'Eliminated in the Round of 16' },
+    'Quarter-Final': { stardom: 3,  managerRel: 48, bankBonus: 50,  label: 'Reached the Quarter-Final' },
+    'Semi-Final':    { stardom: 8,  managerRel: 58, bankBonus: 90,  label: 'Reached the Semi-Final' },
+    'Final':         { stardom: 13, managerRel: 68, bankBonus: 140, label: 'Trial Runner-Up' },
+  };
+  return map[stage] || map['Round of 16'];
+}
+
+function showTrialCompleteSummary() {
+  const trial = GameState.trial;
+  const bonus = getTrialOutcomeBonus();
+  const avgRating = trial.stats.ratings.length
+    ? trial.stats.ratings.reduce((a,b)=>a+b,0) / trial.stats.ratings.length
+    : 0;
+
+  app.innerHTML = `
+    <div class="screen trial-summary-screen animate__animated animate__fadeIn">
+      <div class="trial-summary-icon">${trial.champion ? '🏆' : trial.eliminated ? '📋' : '⚽'}</div>
+      <div class="trial-summary-headline">${bonus.label}</div>
+      <div class="trial-summary-stats">
+        <div class="tss-row"><span>Matches Played</span><span>${trial.stats.matchesPlayed}</span></div>
+        <div class="tss-row"><span>Goals</span><span>${trial.stats.goals}</span></div>
+        <div class="tss-row"><span>Assists</span><span>${trial.stats.assists}</span></div>
+        <div class="tss-row"><span>Average Rating</span><span>${avgRating.toFixed(1)}</span></div>
+      </div>
+      <div class="trial-summary-bonus">
+        <div class="tsb-item"><span>Manager Trust</span><span>${bonus.managerRel}/100</span></div>
+        <div class="tsb-item"><span>Stardom</span><span>+${bonus.stardom}</span></div>
+        <div class="tsb-item"><span>Signing Bonus</span><span>£${bonus.bankBonus}</span></div>
+      </div>
+      <button class="cta-btn" id="begin-career-btn" style="margin-top:18px">Begin Your Career →</button>
+    </div>
+  `;
+  document.getElementById('begin-career-btn').addEventListener('click', beginCareerFromTrial);
+}
+
+function beginCareerFromTrial() {
+  const bonus = getTrialOutcomeBonus();
+  GameState.match.managerRelationship = bonus.managerRel;
+  GameState.career.stardom = bonus.stardom + 5;
+  GameState.career.bankBalance = (GameState.career.bankBalance || 0) + bonus.bankBonus;
+  initializeCareer();
+}
+
+// ── CAREER HUB ────────────────────────────────────────────────────────────────
+
+const LEAGUE_TEAMS_TEMPLATE = [
+  { id: 'riverside',     name: 'Riverside Academy',      attack: 48, defense: 46 },
+  { id: 'city_youth',    name: 'City Youth B',           attack: 52, defense: 50 },
+  { id: 'united_jr',     name: 'United Juniors',         attack: 55, defense: 53 },
+  { id: 'park_rangers',  name: 'Park Rangers Academy',   attack: 50, defense: 48 },
+  { id: 'east_side',     name: 'East Side Youth',        attack: 53, defense: 51 },
+  { id: 'forest_yth',    name: 'Forest Youth',           attack: 49, defense: 50 },
+  { id: 'kings_college', name: "King's College Academy", attack: 51, defense: 49 },
+];
+
+const WEEK_TYPE = {
+  1:'league', 2:'league', 3:'league', 4:'league', 5:'league', 6:'league', 7:'league',
+  8:'cup_qf', 9:'rest', 10:'cup_sf', 11:'rest', 12:'cup_final',
+};
+
+function buildLeagueTeams(playerTeamName, playerOverall) {
+  const playerTeam = {
+    id: 'player_team', name: playerTeamName,
+    attack: Math.round(40 + playerOverall * 0.25),
+    defense: Math.round(38 + playerOverall * 0.22),
+    isPlayerTeam: true,
+  };
+  return [playerTeam, ...LEAGUE_TEAMS_TEMPLATE];
+}
+
+function generateRoundRobin(teams) {
+  const n = teams.length;
+  const arr = teams.slice();
+  const rounds = [];
+  for (let round = 0; round < n - 1; round++) {
+    const matches = [];
+    for (let i = 0; i < n / 2; i++) {
+      matches.push({ home: arr[i], away: arr[n - 1 - i] });
+    }
+    rounds.push(matches);
+    arr.splice(1, 0, arr.pop());
+  }
+  return rounds;
+}
+
+function generateCupBracket(teams) {
+  const shuffled = [...teams].sort(() => Math.random() - 0.5);
+  const matches = [];
+  for (let i = 0; i < shuffled.length; i += 2) {
+    matches.push({ home: shuffled[i], away: shuffled[i+1], result: null, winner: null });
+  }
+  return { stage: 'Quarter-Final', matches };
+}
+
+function initializeCareer() {
+  const p = GameState.player;
+  const car = GameState.career;
+
+  const teamName = car.clubName || `${p.name.split(' ')[0]}'s Academy`;
+  const teams = buildLeagueTeams(teamName, p.overall);
+  const rounds = generateRoundRobin(teams);
+  const fixtures = [];
+  rounds.forEach((roundMatches, i) => {
+    const week = i + 1;
+    roundMatches.forEach(m => {
+      const isPlayerMatch = m.home.id === 'player_team' || m.away.id === 'player_team';
+      fixtures.push({ week, type: 'league', home: m.home, away: m.away, isPlayerMatch, played: false, result: null });
+    });
+  });
+
+  car.fixtures = fixtures;
+  car.leagueTable = teams.map(t => ({
+    id: t.id, name: t.name, played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, pts: 0,
+    isPlayerTeam: t.isPlayerTeam || false,
+  }));
+  car.cup = { name: 'Academy Cup', rounds: [generateCupBracket(teams)], eliminated: false, eliminatedStage: null, champion: false };
+  if (!car.squad) car.squad = assignSquad(p.position, p.name, p.nationality);
+  car.weekNumber = 0;
+  car.totalWeeks = 12;
+  car.date = { day: 1, month: 9, year: 2025 };
+  car.careerStats = car.careerStats || { totalGoals: 0, totalAssists: 0, matchesPlayed: 0, formHistory: [] };
+  car.bankBalance = car.bankBalance || 0;
+  car.stardom = car.stardom || 8;
+  car.seasonComplete = false;
+
+  showCareerHub();
+}
+
+function recordLeagueResult(homeTeam, awayTeam, result) {
+  const table = GameState.career.leagueTable;
+  const home = table.find(t => t.id === homeTeam.id);
+  const away = table.find(t => t.id === awayTeam.id);
+  if (!home || !away) return;
+  home.played++; away.played++;
+  home.gf += result.aScore; home.ga += result.bScore;
+  away.gf += result.bScore; away.ga += result.aScore;
+  if (result.aScore > result.bScore)      { home.won++; home.pts += 3; away.lost++; }
+  else if (result.aScore < result.bScore) { away.won++; away.pts += 3; home.lost++; }
+  else { home.drawn++; away.drawn++; home.pts += 1; away.pts += 1; }
+  table.sort((a, b) => (b.pts - a.pts) || ((b.gf - b.ga) - (a.gf - a.ga)));
+}
+
+function simulateOtherFixturesForWeek(weekNum) {
+  const others = GameState.career.fixtures.filter(f => f.week === weekNum && !f.isPlayerMatch && f.type === 'league');
+  others.forEach(f => {
+    const result = simResult(f.home, f.away);
+    f.result = result; f.played = true;
+    recordLeagueResult(f.home, f.away, result);
+  });
+}
+
+function simulateOtherCupMatches(round) {
+  round.matches.forEach(m => {
+    if (m.winner) return;
+    if (m.home.id === 'player_team' || m.away.id === 'player_team') return;
+    const result = simResult(m.home, m.away);
+    m.result = result;
+    m.winner = result.aScore >= result.bScore ? m.home : m.away;
+  });
+}
+
+function simNextWeek() {
+  const car = GameState.career;
+  car.weekNumber++;
+  advanceCareerDate(7);
+
+  if (car.weekNumber > car.totalWeeks) {
+    car.seasonComplete = true;
+    showSeasonCompleteScreen();
+    return;
+  }
+
+  const weekType = WEEK_TYPE[car.weekNumber];
+
+  if (weekType === 'rest') {
+    showCareerHub();
+    showToast('Quiet week. Training continues.', '📅');
+    return;
+  }
+
+  if (weekType === 'league') {
+    simulateOtherFixturesForWeek(car.weekNumber);
+    const myFixture = car.fixtures.find(f => f.week === car.weekNumber && f.isPlayerMatch);
+    if (!myFixture) { showCareerHub(); return; }
+    launchFixture(myFixture);
+    return;
+  }
+
+  if (weekType === 'cup_qf' || weekType === 'cup_sf' || weekType === 'cup_final') {
+    handleCupWeek();
+    return;
+  }
+}
+
+function handleCupWeek() {
+  const car = GameState.career;
+  const currentRound = car.cup.rounds[car.cup.rounds.length - 1];
+
+  if (car.cup.eliminated) {
+    simulateOtherCupMatches(currentRound);
+    progressCupRoundIfComplete();
+    showCareerHub();
+    return;
+  }
+
+  const myMatch = currentRound.matches.find(m =>
+    !m.winner && (m.home.id === 'player_team' || m.away.id === 'player_team')
+  );
+  simulateOtherCupMatches(currentRound);
+
+  if (myMatch) {
+    launchFixture({ type: 'cup', home: myMatch.home, away: myMatch.away, cupMatch: myMatch, isPlayerMatch: true });
+  } else {
+    showCareerHub();
+  }
+}
+
+function progressCupRoundIfComplete() {
+  const car = GameState.career;
+  const round = car.cup.rounds[car.cup.rounds.length - 1];
+  if (!round.matches.every(m => m.winner)) return;
+  if (round.stage === 'Final') {
+    car.cup.champion = round.matches[0].winner.id === 'player_team';
+    return;
+  }
+  const winners = round.matches.map(m => m.winner);
+  const nextStage = round.stage === 'Quarter-Final' ? 'Semi-Final' : 'Final';
+  const nextMatches = [];
+  for (let i = 0; i < winners.length; i += 2) {
+    nextMatches.push({ home: winners[i], away: winners[i+1] || winners[i], result: null, winner: null });
+  }
+  car.cup.rounds.push({ stage: nextStage, matches: nextMatches });
+}
+
+function advanceCareerDate(days) {
+  const d = GameState.career.date;
+  const date = new Date(d.year, d.month - 1, d.day);
+  date.setDate(date.getDate() + days);
+  d.day = date.getDate(); d.month = date.getMonth() + 1; d.year = date.getFullYear();
+}
+
+function launchFixture(fixture) {
+  const opp = fixture.home.id === 'player_team' ? fixture.away : fixture.home;
+  const gk = Math.round((opp.attack + opp.defense) / 2 - 4);
+  GameState.opponent = {
+    name: opp.name, attack: opp.attack, defense: opp.defense, gk,
+    defender: {
+      shortTackle: opp.defense, slideTackle: opp.defense - 4, positioning: opp.defense - 2,
+      pace: opp.attack - 6, physicality: opp.defense - 2, heading: opp.defense - 4,
+    },
+    gk_diving: gk, gk_reflexes: gk + 2, gk_composure: gk - 2,
+  };
+  GameState.currentFixture = fixture;
+  startMatch();
+}
+
+function onMatchComplete(fixture) {
+  const m = GameState.match;
+  const car = GameState.career;
+
+  car.careerStats.totalGoals   += (m.goals || 0);
+  car.careerStats.totalAssists += (m.assists || 0);
+  car.careerStats.matchesPlayed++;
+  car.careerStats.formHistory.push(m.rating || 6.0);
+  if (car.careerStats.formHistory.length > 5) car.careerStats.formHistory.shift();
+
+  if (m.rating >= 8.0) car.stardom = Math.min(100, car.stardom + 3);
+  else if (m.rating >= 6.5) car.stardom = Math.min(100, car.stardom + 1);
+  else if (m.rating < 5.0) car.stardom = Math.max(0, car.stardom - 1);
+
+  car.bankBalance += 50;
+
+  if (fixture && fixture.type === 'league') {
+    recordLeagueResult(fixture.home, fixture.away, { aScore: m.score.us, bScore: m.score.them });
+    fixture.played = true;
+  } else if (fixture && fixture.type === 'cup' && fixture.cupMatch) {
+    fixture.cupMatch.result = { aScore: m.score.us, bScore: m.score.them };
+    const winner = m.score.us >= m.score.them
+      ? (fixture.home.id === 'player_team' ? fixture.home : fixture.away)
+      : (fixture.home.id === 'player_team' ? fixture.away : fixture.home);
+    fixture.cupMatch.winner = winner;
+    if (winner.id !== 'player_team') {
+      car.cup.eliminated = true;
+      car.cup.eliminatedStage = car.cup.rounds[car.cup.rounds.length - 1].stage;
+    }
+    progressCupRoundIfComplete();
+  }
+
+  showCareerHub();
+}
+
+function getPlayerPortraitHTML() {
+  try {
+    const p = GameState.player;
+    const nation = NATIONS.find(n => n.id === p.nationality);
+    return `<img src="https://flagcdn.com/w40/${nation?.code || 'gb'}.png" style="width:44px;height:44px;border-radius:50%;object-fit:cover;" alt=""/>`;
+  } catch(e) { return ''; }
+}
+
+let compCarouselIndex = 0;
+let compCarouselTimer = null;
+let compTouchStartX = 0;
+
+function showCareerHub() {
+  const p = GameState.player;
+  const car = GameState.career;
+  const nation = NATIONS.find(n => n.id === p.nationality);
+  const myRow = car.leagueTable.find(t => t.isPlayerTeam);
+  const myPosition = car.leagueTable.findIndex(t => t.isPlayerTeam) + 1;
+  const nextFixture = getNextFixture();
+  const form = car.careerStats.formHistory;
+  const avgForm = form.length ? (form.reduce((a,b)=>a+b,0)/form.length) : 6.0;
+
+  app.innerHTML = `
+    <div class="hub-screen animate__animated animate__fadeIn">
+
+      <div class="hub-topbar">
+        <button class="hub-icon-btn" id="hub-settings">⚙️</button>
+        <div class="hub-brand">
+          <div class="hub-logo">STRIKER</div>
+          <div class="hub-date">Week ${car.weekNumber || 1} · ${formatCareerDate(car.date)}</div>
+        </div>
+        <div style="width:32px"></div>
+      </div>
+
+      <div class="hub-header">
+        <div class="hub-portrait">${getPlayerPortraitHTML()}</div>
+        <div class="hub-identity">
+          <div class="hub-name">${p.name}</div>
+          <div class="hub-meta">${nation?.flag||''} Age 16 · ${ordinal(myPosition)} in League</div>
+        </div>
+        <div class="hub-rating-block">
+          <div class="hub-ovr">${p.overall}</div>
+          <div class="hub-balance">£${car.bankBalance}</div>
+        </div>
+      </div>
+
+      <div class="hub-body">
+        <div class="hub-panel hub-team-panel">
+          <div class="hub-panel-label">${car.clubName || (myRow ? myRow.name : 'Your Team')}</div>
+          ${renderSquadFormation(car.squad)}
+          <div class="hub-subs-label">Substitutes</div>
+          <div class="hub-subs-list">
+            ${car.squad.subs.map(s => `<div class="hub-sub-row"><span>${s.name}</span><span class="hub-sub-pos">${s.pos}</span></div>`).join('')}
+          </div>
+        </div>
+
+        <div class="hub-panel hub-comp-panel" id="hub-comp-panel">
+          ${renderCompetitionsPanel()}
+        </div>
+      </div>
+
+      <div class="hub-fixture-banner">
+        <div class="hfb-label">NEXT FIXTURE</div>
+        <div class="hfb-content">
+          ${nextFixture
+            ? `<div class="hfb-opponent">vs ${nextFixture.home.id==='player_team'?nextFixture.away.name:nextFixture.home.name}</div>
+               <div class="hfb-comp-tag">${nextFixture.type==='cup'?'Academy Cup':'League'}</div>`
+            : `<div class="hfb-opponent">Season complete</div>`}
+        </div>
+      </div>
+
+      <div class="hub-tabbar">
+        <button class="hub-tab" data-tab="stats">Stats</button>
+        <button class="hub-tab" data-tab="team">Team</button>
+        <button class="hub-tab hub-tab-sim" id="hub-sim-btn">SIM<br>NEXT WEEK</button>
+        <button class="hub-tab" data-tab="relationships">Relationships</button>
+        <button class="hub-tab" data-tab="actions">Actions</button>
+      </div>
+
+      <div class="hub-footer-stats">
+        <div class="hfs-col">
+          <div class="hfs-row"><span>Form</span><span class="${avgForm>=7?'good':avgForm>=5.5?'mid':'bad'}">${avgForm.toFixed(1)}</span></div>
+          <div class="hfs-row"><span>Goals</span><span>${car.careerStats.totalGoals}</span></div>
+          <div class="hfs-row"><span>Assists</span><span>${car.careerStats.totalAssists}</span></div>
+        </div>
+        <div class="hfs-col hfs-bars">
+          ${renderMiniBar('Manager', GameState.match.managerRelationship || 50)}
+          ${renderMiniBar('Stardom', car.stardom)}
+          <div class="hfs-row"><span>Market Value</span><span class="hfs-mv">${formatMarketValue(p.overall, car.stardom)}</span></div>
+        </div>
+      </div>
+
+    </div>
+  `;
+
+  wireCareerHub();
+  startCompCarouselAutoRotate();
+}
+
+function renderMiniBar(label, val) {
+  return `
+    <div class="hfs-bar-row">
+      <span class="hfs-bar-label">${label}</span>
+      <div class="hfs-bar-track"><div class="hfs-bar-fill" style="width:${val}%"></div></div>
+    </div>`;
+}
+
+function formatMarketValue(overall, stardom) {
+  const base = Math.pow(Math.max(0, overall - 40), 1.8) * 80;
+  const value = Math.round(base * (1 + stardom/100) / 1000) * 1000;
+  return value >= 1000 ? `£${Math.round(value/1000)}k` : `£${value}`;
+}
+
+function ordinal(n) {
+  const s = ['th','st','nd','rd'];
+  const v = n % 100;
+  return n + (s[(v-20)%10] || s[v] || s[0]);
+}
+
+function formatCareerDate(d) {
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${d.day} ${months[d.month-1]} ${d.year}`;
+}
+
+function getNextFixture() {
+  const car = GameState.career;
+  return car.fixtures.find(f => f.week >= car.weekNumber + 1 && f.isPlayerMatch && !f.played) || null;
+}
+
+function getCompetitionsSummary() {
+  const car = GameState.career;
+  const myRow = car.leagueTable.find(t => t.isPlayerTeam);
+  const myPos = car.leagueTable.findIndex(t => t.isPlayerTeam) + 1;
+  const league = {
+    id: 'league', icon: '🏆', name: 'Academy League',
+    summaryLine: myRow ? `${ordinal(myPos)} / ${car.leagueTable.length} · ${myRow.pts} pts` : '—',
+  };
+  let cupSummary;
+  if (car.cup.champion) cupSummary = '🏆 Champions!';
+  else if (car.cup.eliminated) cupSummary = `Eliminated — ${car.cup.eliminatedStage}`;
+  else cupSummary = car.cup.rounds[car.cup.rounds.length - 1]?.stage || 'Quarter-Final';
+  const cup = { id: 'cup', icon: '🏅', name: 'Academy Cup', summaryLine: cupSummary };
+  return [league, cup];
+}
+
+function renderCompetitionsPanel() {
+  const comps = getCompetitionsSummary();
+  return `
+    <div class="hub-panel-label">Competitions</div>
+    <div class="comp-carousel" id="comp-carousel">
+      <div class="comp-track" id="comp-track">
+        ${comps.map(c => `
+          <button class="comp-card" data-comp="${c.id}">
+            <div class="comp-card-icon">${c.icon}</div>
+            <div class="comp-card-name">${c.name}</div>
+            <div class="comp-card-summary">${c.summaryLine}</div>
+            <div class="comp-card-tap">Tap for details →</div>
+          </button>
+        `).join('')}
+      </div>
+    </div>
+    <div class="comp-dots">
+      ${comps.map((_,i) => `<div class="comp-dot ${i===compCarouselIndex?'active':''}" data-dot="${i}"></div>`).join('')}
+    </div>
+  `;
+}
+
+function wireCompetitionsCarousel() {
+  const track = document.getElementById('comp-track');
+  const carousel = document.getElementById('comp-carousel');
+  if (!track || !carousel) return;
+  updateCompTrackPosition();
+  carousel.addEventListener('touchstart', e => {
+    compTouchStartX = e.touches[0].clientX;
+    clearInterval(compCarouselTimer);
+  });
+  carousel.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - compTouchStartX;
+    const comps = getCompetitionsSummary();
+    if (dx < -40) compCarouselIndex = Math.min(comps.length - 1, compCarouselIndex + 1);
+    if (dx > 40)  compCarouselIndex = Math.max(0, compCarouselIndex - 1);
+    updateCompTrackPosition();
+    setTimeout(startCompCarouselAutoRotate, 2500);
+  });
+  document.querySelectorAll('.comp-dot').forEach(dot => {
+    dot.addEventListener('click', () => {
+      compCarouselIndex = parseInt(dot.dataset.dot);
+      updateCompTrackPosition();
+    });
+  });
+  document.querySelectorAll('.comp-card').forEach(card => {
+    card.addEventListener('click', () => {
+      if (card.dataset.comp === 'league') showLeagueTableDetail();
+      else showCupDetail();
+    });
+  });
+}
+
+function updateCompTrackPosition() {
+  const track = document.getElementById('comp-track');
+  if (track) track.style.transform = `translateX(-${compCarouselIndex * 100}%)`;
+  document.querySelectorAll('.comp-dot').forEach((d,i) => d.classList.toggle('active', i===compCarouselIndex));
+}
+
+function startCompCarouselAutoRotate() {
+  clearInterval(compCarouselTimer);
+  compCarouselTimer = setInterval(() => {
+    const comps = getCompetitionsSummary();
+    compCarouselIndex = (compCarouselIndex + 1) % comps.length;
+    updateCompTrackPosition();
+  }, 4000);
+}
+
+function showLeagueTableDetail() {
+  const car = GameState.career;
+  app.innerHTML = `
+    <div class="screen detail-screen animate__animated animate__fadeIn">
+      <div class="detail-header">
+        <button class="detail-back" id="detail-back">←</button>
+        <div class="detail-title">Academy League</div>
+      </div>
+      <table class="league-table-full">
+        <thead><tr><th>#</th><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th></tr></thead>
+        <tbody>
+          ${car.leagueTable.map((t,i) => `
+            <tr class="${t.isPlayerTeam ? 'lt-highlight' : ''}">
+              <td>${i+1}</td><td>${t.name}</td><td>${t.played}</td><td>${t.won}</td>
+              <td>${t.drawn}</td><td>${t.lost}</td><td>${t.gf-t.ga}</td><td><b>${t.pts}</b></td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+  document.getElementById('detail-back').addEventListener('click', showCareerHub);
+}
+
+function showCupDetail() {
+  const car = GameState.career;
+  app.innerHTML = `
+    <div class="screen detail-screen animate__animated animate__fadeIn">
+      <div class="detail-header">
+        <button class="detail-back" id="detail-back">←</button>
+        <div class="detail-title">Academy Cup</div>
+      </div>
+      <div class="cup-bracket">
+        ${car.cup.rounds.map(round => `
+          <div class="cup-round">
+            <div class="cup-round-label">${round.stage}</div>
+            ${round.matches.map(m => `
+              <div class="cup-match ${(m.home.id==='player_team'||m.away.id==='player_team')?'cup-match-mine':''}">
+                <span class="${m.winner?.id===m.home.id?'cup-winner':''}">${m.home.name}</span>
+                <span class="cup-vs">${m.result ? `${m.result.aScore}-${m.result.bScore}` : 'vs'}</span>
+                <span class="${m.winner?.id===m.away.id?'cup-winner':''}">${m.away.name}</span>
+              </div>
+            `).join('')}
+          </div>
+        `).join('')}
+        ${car.cup.champion ? `<div class="cup-champion-banner">🏆 CHAMPIONS</div>` : ''}
+        ${car.cup.eliminated ? `<div class="cup-eliminated-banner">Eliminated — ${car.cup.eliminatedStage}</div>` : ''}
+      </div>
+    </div>`;
+  document.getElementById('detail-back').addEventListener('click', showCareerHub);
+}
+
+function showStatsTab() {
+  const car = GameState.career;
+  const form = car.careerStats.formHistory;
+  app.innerHTML = `
+    <div class="screen detail-screen animate__animated animate__fadeIn">
+      <div class="detail-header"><button class="detail-back" id="detail-back">←</button><div class="detail-title">Season Stats</div></div>
+      <div class="stats-tab-grid">
+        <div class="stat-tile"><div class="stat-tile-val">${car.careerStats.matchesPlayed}</div><div class="stat-tile-label">Matches</div></div>
+        <div class="stat-tile"><div class="stat-tile-val">${car.careerStats.totalGoals}</div><div class="stat-tile-label">Goals</div></div>
+        <div class="stat-tile"><div class="stat-tile-val">${car.careerStats.totalAssists}</div><div class="stat-tile-label">Assists</div></div>
+        <div class="stat-tile"><div class="stat-tile-val">${car.stardom}</div><div class="stat-tile-label">Stardom</div></div>
+      </div>
+      <div class="hub-panel-label" style="margin-top:16px">Recent Form</div>
+      <div class="form-history-row">
+        ${form.map(f => `<div class="form-pip ${f>=7?'good':f>=5.5?'mid':'bad'}">${f.toFixed(1)}</div>`).join('') || '<span style="color:rgba(255,255,255,0.3);font-size:12px">No matches played yet</span>'}
+      </div>
+    </div>`;
+  document.getElementById('detail-back').addEventListener('click', showCareerHub);
+}
+
+function showTeamTab() {
+  const car = GameState.career;
+  app.innerHTML = `
+    <div class="screen detail-screen animate__animated animate__fadeIn">
+      <div class="detail-header"><button class="detail-back" id="detail-back">←</button><div class="detail-title">Full Squad</div></div>
+      <div class="squad-list">
+        ${car.squad.starters.map(s => `
+          <div class="squad-row ${s.isPlayer?'squad-row-mine':''}">
+            <span class="squad-pos-tag">${s.label}</span><span>${s.name}</span>
+          </div>`).join('')}
+      </div>
+      <div class="hub-panel-label" style="margin-top:14px">Substitutes</div>
+      <div class="squad-list">
+        ${car.squad.subs.map(s => `<div class="squad-row"><span class="squad-pos-tag">${s.pos}</span><span>${s.name}</span></div>`).join('')}
+      </div>
+    </div>`;
+  document.getElementById('detail-back').addEventListener('click', showCareerHub);
+}
+
+function showRelationshipsTab() {
+  const car = GameState.career;
+  const mgrRel = GameState.match.managerRelationship || 50;
+  app.innerHTML = `
+    <div class="screen detail-screen animate__animated animate__fadeIn">
+      <div class="detail-header"><button class="detail-back" id="detail-back">←</button><div class="detail-title">Relationships</div></div>
+      <div class="rel-row">
+        <div class="rel-name">Academy Manager</div>
+        <div class="hfs-bar-track" style="width:100%"><div class="hfs-bar-fill" style="width:${mgrRel}%"></div></div>
+      </div>
+      ${car.squad.starters.filter(s=>!s.isPlayer).slice(0,4).map(s => `
+        <div class="rel-row">
+          <div class="rel-name">${s.name} <span class="rel-pos">${s.label}</span></div>
+          <div class="hfs-bar-track" style="width:100%"><div class="hfs-bar-fill" style="width:50%"></div></div>
+        </div>`).join('')}
+      <div class="rel-note">Relationships deepen as your story continues.</div>
+    </div>`;
+  document.getElementById('detail-back').addEventListener('click', showCareerHub);
+}
+
+function showActionsTab() {
+  app.innerHTML = `
+    <div class="screen detail-screen animate__animated animate__fadeIn">
+      <div class="detail-header"><button class="detail-back" id="detail-back">←</button><div class="detail-title">Actions</div></div>
+      <div class="actions-placeholder">
+        <div class="actions-icon">🚧</div>
+        <div class="actions-text">Training, press conferences, and lifestyle choices arrive in a future update.</div>
+      </div>
+    </div>`;
+  document.getElementById('detail-back').addEventListener('click', showCareerHub);
+}
+
+function showSeasonCompleteScreen() {
+  const car = GameState.career;
+  const myPos = car.leagueTable.findIndex(t => t.isPlayerTeam) + 1;
+  app.innerHTML = `
+    <div class="screen detail-screen animate__animated animate__fadeIn" style="text-align:center;padding-top:60px">
+      <div style="font-size:48px">🏁</div>
+      <div class="detail-title" style="font-size:32px;margin-top:10px">Season Complete</div>
+      <div style="color:rgba(255,255,255,0.5);margin-top:8px">Finished ${ordinal(myPos)} in the Academy League</div>
+      <div style="color:rgba(255,255,255,0.3);margin-top:20px;font-size:13px">Next season and progression — coming soon.</div>
+    </div>`;
+}
+
+function wireCareerHub() {
+  document.getElementById('hub-sim-btn')?.addEventListener('click', simNextWeek);
+  document.querySelectorAll('.hub-tab[data-tab]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tab = btn.dataset.tab;
+      if (tab === 'stats') showStatsTab();
+      if (tab === 'team') showTeamTab();
+      if (tab === 'relationships') showRelationshipsTab();
+      if (tab === 'actions') showActionsTab();
+    });
+  });
+  document.getElementById('hub-settings')?.addEventListener('click', () => showToast('Settings coming soon', '⚙️'));
+  wireCompetitionsCarousel();
 }
 
 // ── UI HELPERS ────────────────────────────────────────────────────────────────
