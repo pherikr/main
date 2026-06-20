@@ -823,7 +823,7 @@ export function postMatchScreen() {
   <div class="pm-stat-gains" id="stat-gains-reveal" style="display:none">
     <div class="pm-sg-label">STAT IMPROVEMENTS</div>
     <div id="stat-gains-list"></div>
-    <button class="cta-btn" id="play-again-btn" style="margin-top:2rem">Play Again →</button>
+    <button class="cta-btn" id="play-again-btn" style="margin-top:2rem">Continue →</button>
   </div>
 </div>`;
 }

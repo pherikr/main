@@ -725,9 +725,11 @@ function showAcademyXI() {
 // ── MATCH ─────────────────────────────────────────────────────────────────────
 
 function startMatch() {
-  GameState.match.minute = 0;
-  GameState.match.minEvents = 5;
-  GameState.match.eventsThisMatch = 0;
+  if (matchTimer) { clearTimeout(matchTimer); matchTimer = null; }
+  awaitingTerminal = false;
+  pendingEventDef = null;
+  pendingResult = null;
+  GameState.resetMatch();
   renderMatch();
   scheduleA6Check();
   runMatchTick();

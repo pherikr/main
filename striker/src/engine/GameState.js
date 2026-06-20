@@ -109,6 +109,17 @@ export const GameState = {
     this.currentTrialMatch = null;
     this.currentFixture = null;
     this.career = null;
+    this.resetMatch();
+    this.match.managerRelationship = 50;
+    this.debug.rolls = [];
+    this.postMatch = { statChanges: {}, managerQuote: '', headline: '', offPitchEvent: null };
+  },
+
+  // Fresh match state for a new kickoff. Preserves the career-level
+  // manager relationship so it carries across the season.
+  resetMatch() {
+    const keepManagerRel = (this.match && typeof this.match.managerRelationship === 'number')
+      ? this.match.managerRelationship : 50;
     this.match = {
       minute: 0,
       score: { us: 0, them: 0 },
@@ -138,7 +149,7 @@ export const GameState = {
       redCard: false,
       sentOff: false,
       subRisk: false,
-      managerRelationship: 50,
+      managerRelationship: keepManagerRel,
       shotsOnTarget: 0,
       shotsMissed: 0,
       keeperAdvanced: false,
@@ -150,7 +161,6 @@ export const GameState = {
       oppGoalJustScored: false,
       lastOppGoalNarrative: '',
     };
-    this.debug.rolls = [];
     this.postMatch = { statChanges: {}, managerQuote: '', headline: '', offPitchEvent: null };
   },
 };
